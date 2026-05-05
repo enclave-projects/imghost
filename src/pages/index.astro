@@ -1,17 +1,446 @@
 ---
-
+import Layout from '../layouts/Layout.astro';
+export const prerender = false;
 ---
+<Layout title="Fast Image Hosting">
+  <!-- ═══ NAV ═══════════════════════════════════════════════════════════════ -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="/" class="logo">
+        <div class="logo-mark">
+          <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=22" alt="" width="22" height="22" />
+        </div>
+        ImgHost
+      </a>
+      <div class="nav-links">
+        <a href="/login" class="btn btn-ghost nav-btn">Sign in</a>
+        <a href="/signup" class="btn btn-primary nav-btn">Get started free</a>
+      </div>
+    </div>
+  </nav>
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+  <!-- ═══ HERO ══════════════════════════════════════════════════════════════ -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="grid-overlay"></div>
+    </div>
+    <div class="hero-inner">
+      <a href="/signup" class="hero-badge">
+        <span class="badge-dot"></span>
+        Free forever · No credit card
+      </a>
+      <h1 class="hero-title">
+        The fastest way to<br />
+        <span class="gradient-text">host &amp; share images</span>
+      </h1>
+      <p class="hero-sub">
+        Upload once, share everywhere. Powered by Cloudflare's global edge network —
+        images delivered in milliseconds, anywhere on earth.
+      </p>
+      <div class="hero-cta">
+        <a href="/signup" class="btn btn-primary cta-btn">
+          <img src="https://img.icons8.com/?id=qZ1FibjKOsRJ&format=png&size=20" alt="" width="20" height="20" />
+          Start hosting for free
+        </a>
+        <a href="/login" class="btn btn-outline cta-btn-2">Sign in →</a>
+      </div>
+
+      <!-- Floating demo card -->
+      <div class="demo-card">
+        <div class="demo-header">
+          <div class="demo-dots">
+            <span></span><span></span><span></span>
+          </div>
+          <span class="demo-label">imghost.pranjal-ai-arena.workers.dev</span>
+        </div>
+        <div class="demo-body">
+          <div class="demo-upload-zone">
+            <img src="https://img.icons8.com/?id=qZ1FibjKOsRJ&format=png&size=40" alt="" width="40" height="40" />
+            <div>
+              <div class="demo-filename">photo-sunset.jpg</div>
+              <div class="demo-progress-wrap">
+                <div class="demo-progress-fill"></div>
+              </div>
+              <div class="demo-status">Uploading… 78%</div>
+            </div>
+          </div>
+          <div class="demo-url-row">
+            <div class="demo-url">https://imghost.../images/user/abc123.jpg</div>
+            <div class="demo-copy-chip">
+              <img src="https://img.icons8.com/?id=s30bO0DNz4I5&format=png&size=14" alt="" width="14" height="14" />
+              Copy
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ STATS ═════════════════════════════════════════════════════════════ -->
+  <section class="stats-bar">
+    <div class="stats-inner">
+      <div class="stat-item">
+        <span class="stat-num">300+</span>
+        <span class="stat-lbl">Edge locations worldwide</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-num">&lt;50ms</span>
+        <span class="stat-lbl">Average delivery time</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-num">10 MB</span>
+        <span class="stat-lbl">Max upload size</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-num">100%</span>
+        <span class="stat-lbl">Free tier</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FEATURES ══════════════════════════════════════════════════════════ -->
+  <section class="features">
+    <div class="features-inner">
+      <div class="section-label">Why ImgHost</div>
+      <h2 class="section-title">Everything you need,<br />nothing you don't</h2>
+
+      <div class="features-grid">
+        <div class="feat-card">
+          <div class="feat-icon-wrap" style="background:#eef2ff">
+            <img src="https://img.icons8.com/?id=qZ1FibjKOsRJ&format=png&size=32" alt="" width="32" height="32" />
+          </div>
+          <h3>Instant CDN delivery</h3>
+          <p>Every image is served from Cloudflare's global network. Sub-50ms delivery anywhere on Earth.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap" style="background:#f0fdf4">
+            <img src="https://img.icons8.com/?id=FbRY9JkBrjiX&format=png&size=32" alt="" width="32" height="32" />
+          </div>
+          <h3>Private by default</h3>
+          <p>Images are private to your account. PBKDF2-secured passwords, HttpOnly session cookies.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap" style="background:#fffbeb">
+            <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=32" alt="" width="32" height="32" />
+          </div>
+          <h3>7 image formats</h3>
+          <p>JPEG, PNG, GIF, WebP, AVIF, SVG, BMP — validated by magic bytes, not just extension.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap" style="background:#fdf4ff">
+            <img src="https://img.icons8.com/?id=s30bO0DNz4I5&format=png&size=32" alt="" width="32" height="32" />
+          </div>
+          <h3>One-click copy URLs</h3>
+          <p>Every image gets a permanent URL. Copy it instantly and embed anywhere.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap" style="background:#fff1f2">
+            <img src="https://img.icons8.com/?id=BJkQWseLWhe4&format=png&size=32" alt="" width="32" height="32" />
+          </div>
+          <h3>Manage your library</h3>
+          <p>View, copy, and delete images from a clean dashboard. Full control over your uploads.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon-wrap" style="background:#f0f9ff">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <h3>Zero egress fees</h3>
+          <p>Cloudflare R2 charges no egress. Serve unlimited bandwidth for free, forever.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ HOW IT WORKS ══════════════════════════════════════════════════════ -->
+  <section class="how">
+    <div class="how-inner">
+      <div class="section-label">How it works</div>
+      <h2 class="section-title">Up and running in 30 seconds</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <h3>Create a free account</h3>
+          <p>Sign up with your email. No credit card, no setup fees. Just go.</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <h3>Upload your images</h3>
+          <p>Drag & drop or pick files. Up to 10 MB each, 10 uploads per hour.</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <h3>Share anywhere</h3>
+          <p>Copy the CDN-backed URL and paste it anywhere — websites, chats, docs.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CTA STRIP ══════════════════════════════════════════════════════════ -->
+  <section class="cta-strip">
+    <div class="cta-strip-inner">
+      <img src="https://img.icons8.com/?id=qZ1FibjKOsRJ&format=png&size=56" alt="" width="56" height="56" style="filter:drop-shadow(0 4px 16px rgba(0,0,0,.2))" />
+      <div>
+        <h2>Ready to start hosting?</h2>
+        <p>Free, instant, and powered by Cloudflare.</p>
+      </div>
+      <a href="/signup" class="btn btn-primary cta-big-btn">
+        Create free account →
+      </a>
+    </div>
+  </section>
+
+  <!-- ═══ FOOTER ═════════════════════════════════════════════════════════════ -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <a href="/" class="footer-logo">
+        <div class="logo-mark-sm">
+          <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=16" alt="" width="16" height="16" />
+        </div>
+        ImgHost
+      </a>
+      <p class="footer-copy">© 2026 ImgHost · Built on Cloudflare Workers, R2 &amp; D1</p>
+      <div class="footer-links">
+        <a href="/login">Sign in</a>
+        <a href="/signup">Sign up</a>
+      </div>
+    </div>
+  </footer>
+
+  <style>
+    /* ── Nav ───────────────────────────────────────────────── */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(240,242,248,.85); backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1200px; margin: 0 auto; padding: 0 28px;
+      height: 60px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 16px; color: var(--text);
+      text-decoration: none; letter-spacing: -.02em;
+    }
+    .logo-mark {
+      width: 34px; height: 34px; border-radius: 9px;
+      background: var(--primary-light); display: flex; align-items: center; justify-content: center;
+    }
+    .nav-links { display: flex; align-items: center; gap: 8px; }
+    .nav-btn { font-size: 13.5px; padding: 7px 16px; }
+
+    /* ── Hero ──────────────────────────────────────────────── */
+    .hero {
+      position: relative; overflow: hidden;
+      padding: 100px 28px 80px; text-align: center;
+    }
+    .hero-bg { position: absolute; inset: 0; z-index: 0; }
+    .blob {
+      position: absolute; border-radius: 50%;
+      filter: blur(80px); opacity: .35;
+    }
+    .blob-1 {
+      width: 600px; height: 600px;
+      top: -200px; left: -150px;
+      background: radial-gradient(circle, #818cf8, #5b5ef4);
+    }
+    .blob-2 {
+      width: 500px; height: 500px;
+      bottom: -100px; right: -100px;
+      background: radial-gradient(circle, #a78bfa, #7c3aed);
+    }
+    .grid-overlay {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(var(--border) 1px, transparent 1px),
+                        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px; opacity: .4;
+    }
+    .hero-inner {
+      position: relative; z-index: 1;
+      max-width: 780px; margin: 0 auto;
+      display: flex; flex-direction: column; align-items: center; gap: 24px;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 5px 14px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-full); font-size: 13px; font-weight: 600; color: var(--text-2);
+      text-decoration: none; box-shadow: var(--shadow); transition: box-shadow .2s;
+    }
+    .hero-badge:hover { box-shadow: var(--shadow-md); }
+    .badge-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34,197,94,.2);
+    }
+    .hero-title {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 800; letter-spacing: -.04em; line-height: 1.1;
+      color: var(--text);
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #5b5ef4, #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: 1.05rem; color: var(--text-muted); line-height: 1.7;
+      max-width: 560px;
+    }
+    .hero-cta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    .cta-btn { font-size: 15px; padding: 12px 24px; }
+    .cta-btn-2 { font-size: 15px; padding: 11px 22px; }
+
+    /* Demo card */
+    .demo-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+      overflow: hidden; width: 100%; max-width: 500px; margin-top: 16px;
+      text-align: left;
+    }
+    .demo-header {
+      background: var(--surface-2); border-bottom: 1px solid var(--border);
+      padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+    }
+    .demo-dots { display: flex; gap: 5px; }
+    .demo-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+    .demo-dots span:first-child { background: #f87171; }
+    .demo-dots span:nth-child(2) { background: #fbbf24; }
+    .demo-dots span:nth-child(3) { background: #34d399; }
+    .demo-label { font-size: 11.5px; color: var(--text-muted); font-family: monospace; }
+    .demo-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .demo-upload-zone {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; background: var(--surface-2); border-radius: var(--r-sm);
+      border: 1px solid var(--border);
+    }
+    .demo-filename { font-size: 13px; font-weight: 600; color: var(--text); }
+    .demo-progress-wrap {
+      height: 5px; background: var(--surface-3); border-radius: 99px;
+      overflow: hidden; margin: 6px 0; width: 200px;
+    }
+    .demo-progress-fill {
+      height: 100%; width: 78%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--primary), #a78bfa);
+    }
+    .demo-status { font-size: 11.5px; color: var(--text-muted); }
+    .demo-url-row {
+      display: flex; align-items: center; gap: 10px; justify-content: space-between;
+      padding: 9px 12px; background: var(--surface-3); border-radius: var(--r-sm);
+      border: 1px solid var(--border);
+    }
+    .demo-url { font-size: 11.5px; font-family: monospace; color: var(--text-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .demo-copy-chip {
+      display: flex; align-items: center; gap: 4px;
+      padding: 3px 9px; background: var(--primary-light); color: var(--primary);
+      border-radius: var(--r-xs); font-size: 11.5px; font-weight: 600; flex-shrink: 0;
+    }
+
+    /* ── Stats ─────────────────────────────────────────────── */
+    .stats-bar { padding: 0 28px; }
+    .stats-inner {
+      max-width: 1200px; margin: 0 auto;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-xl); padding: 28px 40px;
+      display: flex; align-items: center; justify-content: center;
+      flex-wrap: wrap; gap: 0; box-shadow: var(--shadow);
+    }
+    .stat-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 32px; }
+    .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--primary); letter-spacing: -.03em; }
+    .stat-lbl { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+    .stat-divider { width: 1px; height: 48px; background: var(--border); }
+    @media (max-width: 640px) { .stat-divider { display: none; } }
+
+    /* ── Features ──────────────────────────────────────────── */
+    .features { padding: 80px 28px; }
+    .features-inner { max-width: 1200px; margin: 0 auto; }
+
+    .section-label {
+      display: inline-block;
+      font-size: 12.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--primary); margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(1.6rem, 4vw, 2.3rem);
+      font-weight: 800; letter-spacing: -.03em; line-height: 1.15;
+      color: var(--text); margin-bottom: 48px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 18px;
+    }
+    .feat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 24px;
+      box-shadow: var(--shadow); transition: box-shadow .2s, transform .2s;
+    }
+    .feat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .feat-icon-wrap {
+      width: 52px; height: 52px; border-radius: var(--r);
+      display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+    }
+    .feat-card h3 { font-size: 15.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .feat-card p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+    /* ── How it works ──────────────────────────────────────── */
+    .how { padding: 80px 28px; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .how-inner { max-width: 1200px; margin: 0 auto; }
+    .steps {
+      display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;
+    }
+    .step { flex: 1; min-width: 200px; }
+    .step-num {
+      font-size: 2rem; font-weight: 800; color: var(--primary-light);
+      -webkit-text-stroke: 2px var(--primary); margin-bottom: 12px; letter-spacing: -.04em;
+    }
+    .step h3 { font-size: 15.5px; font-weight: 700; margin-bottom: 8px; }
+    .step p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+    .step-arrow { font-size: 1.4rem; color: var(--border-strong); padding-top: 14px; flex-shrink: 0; }
+    @media (max-width: 600px) { .step-arrow { display: none; } }
+
+    /* ── CTA strip ─────────────────────────────────────────── */
+    .cta-strip { padding: 80px 28px; }
+    .cta-strip-inner {
+      max-width: 900px; margin: 0 auto;
+      background: linear-gradient(135deg, #5b5ef4, #7c7ff7 50%, #a78bfa);
+      border-radius: var(--r-xl); padding: 48px 40px;
+      display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+    }
+    .cta-strip-inner > div { flex: 1; min-width: 220px; }
+    .cta-strip-inner h2 { font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -.03em; margin-bottom: 6px; }
+    .cta-strip-inner p { font-size: 14.5px; color: rgba(255,255,255,.8); }
+    .cta-big-btn {
+      background: #fff; color: var(--primary); border-color: #fff;
+      font-size: 15px; padding: 12px 24px; white-space: nowrap;
+      box-shadow: 0 4px 20px rgba(0,0,0,.2);
+    }
+    .cta-big-btn:hover { background: #f0f0ff; box-shadow: 0 8px 32px rgba(0,0,0,.25); }
+
+    /* ── Footer ────────────────────────────────────────────── */
+    .footer { border-top: 1px solid var(--border); padding: 28px; }
+    .footer-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    }
+    .footer-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 700; font-size: 14px; color: var(--text); text-decoration: none;
+    }
+    .logo-mark-sm {
+      width: 26px; height: 26px; border-radius: 7px;
+      background: var(--primary-light); display: flex; align-items: center; justify-content: center;
+    }
+    .footer-copy { font-size: 13px; color: var(--text-muted); }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a { font-size: 13px; color: var(--text-muted); transition: color .15s; text-decoration: none; }
+    .footer-links a:hover { color: var(--text); }
+  </style>
+</Layout>

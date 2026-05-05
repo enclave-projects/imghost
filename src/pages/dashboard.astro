@@ -1,0 +1,632 @@
+---
+import Layout from '../layouts/Layout.astro';
+export const prerender = false;
+const user = Astro.locals.user!;
+---
+<Layout title="Dashboard">
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-inner">
+    <a href="/" class="logo">
+      <div class="logo-mark">
+        <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=22" alt="" width="22" height="22" />
+      </div>
+      ImgHost
+    </a>
+    <nav class="header-nav">
+      <div class="user-chip">
+        <div class="avatar">{user.email.charAt(0).toUpperCase()}</div>
+        <span class="user-email">{user.email}</span>
+      </div>
+      <button class="btn btn-ghost logout-btn" id="logout-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign out
+      </button>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══ MAIN ══════════════════════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- Rate limit bar -->
+  <div class="quota-card" id="quota-card">
+    <div class="quota-left">
+      <img src="https://img.icons8.com/?id=qZ1FibjKOsRJ&format=png&size=36" alt="" width="36" height="36" class="quota-icon" />
+      <div>
+        <div class="quota-title">Hourly upload quota</div>
+        <div class="quota-sub" id="quota-text">Loading…</div>
+      </div>
+    </div>
+    <div class="quota-right">
+      <div class="quota-track">
+        <div class="quota-fill" id="quota-fill" style="width:0%"></div>
+      </div>
+      <div class="quota-numbers" id="quota-numbers"></div>
+    </div>
+  </div>
+
+  <!-- Upload zone -->
+  <section class="upload-card" id="drop-zone">
+    <div class="upload-idle" id="upload-idle">
+      <div class="upload-icon-wrap">
+        <img src="https://img.icons8.com/?id=qZ1FibjKOsRJ&format=png&size=48" alt="Upload" width="48" height="48" />
+      </div>
+      <div class="upload-text">
+        <p class="upload-title">Drop images here to upload</p>
+        <p class="upload-hint">JPEG · PNG · WebP · GIF · AVIF · SVG · BMP &nbsp;|&nbsp; Max 10 MB each</p>
+      </div>
+      <label class="btn btn-primary choose-btn" for="file-input">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Choose files
+      </label>
+      <input type="file" id="file-input" accept="image/*" multiple hidden />
+    </div>
+
+    <!-- Active upload progress (XHR real-time) -->
+    <div class="upload-active" id="upload-active" hidden>
+      <div class="upload-file-name" id="upload-file-name">Uploading…</div>
+      <div class="xhr-track">
+        <div class="xhr-fill" id="xhr-fill"></div>
+      </div>
+      <div class="xhr-meta">
+        <span id="xhr-pct">0%</span>
+        <span id="xhr-speed"></span>
+        <span id="xhr-of"></span>
+      </div>
+    </div>
+
+    <!-- Per-batch progress -->
+    <div class="batch-bar" id="batch-bar" hidden>
+      <div class="batch-steps" id="batch-steps"></div>
+    </div>
+
+    <div id="upload-error" class="alert" style="margin-top:14px;"></div>
+  </section>
+
+  <!-- Gallery -->
+  <section class="gallery-section">
+    <div class="gallery-header">
+      <div class="gallery-title-row">
+        <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=24" alt="" width="24" height="24" />
+        <h2>Your images</h2>
+        <span class="img-badge" id="img-count"></span>
+      </div>
+      <div class="gallery-actions" id="gallery-actions" hidden>
+        <span class="sort-label">Newest first</span>
+      </div>
+    </div>
+
+    <div id="gallery-loading" class="gallery-state">
+      <div class="spinner"></div>
+      <p>Loading your images…</p>
+    </div>
+
+    <div id="gallery-empty" class="gallery-state" hidden>
+      <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=64" alt="" width="64" height="64" style="opacity:.25;filter:grayscale(1)" />
+      <p class="empty-title">No images yet</p>
+      <p class="empty-sub">Upload your first image above to get started</p>
+    </div>
+
+    <div id="gallery" class="gallery" hidden></div>
+
+    <div id="load-more-wrap" hidden style="text-align:center;margin-top:28px;">
+      <button class="btn btn-outline" id="load-more-btn">Load more images</button>
+    </div>
+  </section>
+</main>
+
+<!-- Image card template -->
+<template id="img-tpl">
+  <div class="img-card">
+    <div class="img-thumb">
+      <img loading="lazy" decoding="async" />
+      <div class="img-actions">
+        <button class="action-btn copy-btn" title="Copy URL">
+          <img src="https://img.icons8.com/?id=s30bO0DNz4I5&format=png&size=18" alt="Copy" width="18" height="18" />
+          <span class="action-label">Copy URL</span>
+        </button>
+        <button class="action-btn delete-btn" title="Delete">
+          <img src="https://img.icons8.com/?id=BJkQWseLWhe4&format=png&size=18" alt="Delete" width="18" height="18" />
+        </button>
+      </div>
+      <div class="img-type-badge"></div>
+    </div>
+    <div class="img-info">
+      <p class="img-name"></p>
+      <div class="img-meta-row">
+        <span class="img-size"></span>
+        <span class="img-dot">·</span>
+        <span class="img-date"></span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style>
+  /* ── Header ──────────────────────────────────────────────── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .header-inner {
+    max-width: 1280px; margin: 0 auto; padding: 0 28px;
+    height: 60px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 800; font-size: 16px; color: var(--text);
+    text-decoration: none; letter-spacing: -.02em;
+  }
+  .logo-mark {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--primary-light); display: flex; align-items: center; justify-content: center;
+  }
+  .header-nav { display: flex; align-items: center; gap: 10px; }
+  .user-chip {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 12px 5px 6px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: var(--r-full);
+  }
+  .avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .user-email { font-size: 13px; font-weight: 500; color: var(--text-2); display: none; }
+  @media (min-width: 520px) { .user-email { display: block; } }
+  .logout-btn { font-size: 13px; color: var(--text-muted); }
+
+  /* ── Main ────────────────────────────────────────────────── */
+  .main { max-width: 1280px; margin: 0 auto; padding: 28px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* ── Quota card ──────────────────────────────────────────── */
+  .quota-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 18px 24px;
+    display: flex; align-items: center; gap: 24px;
+    box-shadow: var(--shadow); flex-wrap: wrap; gap: 16px;
+  }
+  .quota-left { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+  .quota-icon { filter: drop-shadow(0 2px 8px rgba(91,94,244,.3)); }
+  .quota-title { font-weight: 700; font-size: 14px; color: var(--text); }
+  .quota-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .quota-right { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
+  .quota-track {
+    height: 8px; background: var(--surface-3); border-radius: var(--r-full);
+    overflow: hidden; border: 1px solid var(--border);
+  }
+  .quota-fill {
+    height: 100%; border-radius: var(--r-full);
+    background: linear-gradient(90deg, var(--primary), #a78bfa);
+    transition: width .5s var(--ease), background .3s;
+  }
+  .quota-fill.warn { background: linear-gradient(90deg, var(--warning), #f97316); }
+  .quota-fill.danger { background: linear-gradient(90deg, var(--error), #dc2626); }
+  .quota-numbers { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+
+  /* ── Upload card ─────────────────────────────────────────── */
+  .upload-card {
+    background: var(--surface); border: 2px dashed var(--border);
+    border-radius: var(--r-lg); padding: 32px 28px;
+    box-shadow: var(--shadow); transition: border-color .2s, background .2s;
+  }
+  .upload-card.drag-over {
+    border-color: var(--primary); background: var(--primary-light);
+  }
+  .upload-idle {
+    display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
+  }
+  .upload-icon-wrap {
+    width: 72px; height: 72px; background: var(--primary-light);
+    border-radius: var(--r-lg); display: flex; align-items: center; justify-content: center;
+    margin-bottom: 4px;
+  }
+  .upload-title { font-size: 16px; font-weight: 700; color: var(--text); }
+  .upload-hint { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .choose-btn { font-size: 14px; padding: 10px 22px; margin-top: 4px; }
+
+  /* XHR real-time progress */
+  .upload-active { display: flex; flex-direction: column; gap: 10px; }
+  .upload-file-name { font-size: 14px; font-weight: 600; color: var(--text); text-align: center; }
+  .xhr-track {
+    height: 10px; background: var(--surface-3); border-radius: var(--r-full);
+    overflow: hidden; border: 1px solid var(--border); position: relative;
+  }
+  .xhr-fill {
+    height: 100%; width: 0; border-radius: var(--r-full);
+    background: linear-gradient(90deg, var(--primary), #a78bfa);
+    transition: width .1s linear;
+    position: relative; overflow: hidden;
+  }
+  .xhr-fill::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
+    animation: shimmer 1.2s infinite;
+  }
+  @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  .xhr-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+  /* Batch steps */
+  .batch-bar { margin-top: 14px; }
+  .batch-steps { display: flex; gap: 4px; }
+  .batch-step {
+    height: 4px; flex: 1; border-radius: 99px;
+    background: var(--border); transition: background .2s;
+  }
+  .batch-step.done { background: var(--success); }
+  .batch-step.active { background: var(--primary); }
+  .batch-step.error { background: var(--error); }
+
+  /* ── Gallery ─────────────────────────────────────────────── */
+  .gallery-section { }
+  .gallery-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 18px; flex-wrap: wrap; gap: 10px;
+  }
+  .gallery-title-row { display: flex; align-items: center; gap: 10px; }
+  .gallery-title-row h2 { font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em; }
+  .img-badge {
+    padding: 2px 9px; background: var(--surface-3); border: 1px solid var(--border);
+    border-radius: var(--r-full); font-size: 12px; font-weight: 600; color: var(--text-muted);
+  }
+  .sort-label { font-size: 12.5px; color: var(--text-faint); }
+
+  .gallery-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; padding: 64px 24px; color: var(--text-muted); text-align: center;
+  }
+  .empty-title { font-size: 16px; font-weight: 700; color: var(--text-2); }
+  .empty-sub { font-size: 14px; color: var(--text-muted); }
+
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px;
+  }
+
+  /* ── Image card ──────────────────────────────────────────── */
+  .img-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); box-shadow: var(--shadow);
+    overflow: hidden; transition: box-shadow .2s, transform .2s;
+  }
+  .img-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+  .img-thumb { position: relative; aspect-ratio: 1; background: var(--surface-3); overflow: hidden; }
+  .img-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s; }
+  .img-card:hover .img-thumb img { transform: scale(1.04); }
+
+  .img-actions {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,.7) 0%, rgba(0,0,0,.1) 60%, transparent 100%);
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 10px; opacity: 0; transition: opacity .2s;
+  }
+  .img-card:hover .img-actions { opacity: 1; }
+
+  .action-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 10px; border-radius: var(--r-sm);
+    background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.25);
+    color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
+    backdrop-filter: blur(6px); transition: background .15s;
+    white-space: nowrap;
+  }
+  .action-btn:hover { background: rgba(255,255,255,.3); }
+  .copy-btn.copied { background: rgba(16,185,129,.5); border-color: rgba(16,185,129,.6); }
+  .delete-btn:hover { background: rgba(239,68,68,.5); border-color: rgba(239,68,68,.6); }
+  .action-label { display: none; }
+  @media (min-width: 400px) { .action-label { display: block; } }
+
+  .img-type-badge {
+    position: absolute; top: 8px; right: 8px;
+    padding: 2px 7px; background: rgba(0,0,0,.55);
+    border-radius: var(--r-xs); font-size: 10px; font-weight: 700;
+    color: rgba(255,255,255,.9); letter-spacing: .04em; text-transform: uppercase;
+    backdrop-filter: blur(4px);
+  }
+
+  .img-info { padding: 10px 12px 12px; }
+  .img-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .img-meta-row { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
+  .img-size, .img-date, .img-dot { font-size: 11.5px; color: var(--text-faint); }
+</style>
+
+<script>
+  // ── Types ─────────────────────────────────────────────────────────────────
+  interface ImageItem {
+    id: number;
+    filename: string;
+    size: number;
+    contentType: string;
+    url: string;
+    createdAt: string;
+  }
+  interface ImagesResponse {
+    ok: boolean;
+    images: ImageItem[];
+    uploadsUsed: number;
+    uploadsLimit: number;
+    error?: string;
+  }
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let images: ImageItem[] = [];
+  let offset = 0;
+  const LIMIT = 50;
+  const MAX_SIZE = 10 * 1024 * 1024;
+  const ALLOWED = new Set(['image/jpeg','image/png','image/gif','image/webp','image/avif','image/svg+xml','image/bmp']);
+  let uploadsUsed = 0;
+  let uploadsLimit = 10;
+
+  // ── Elements ──────────────────────────────────────────────────────────────
+  const gallery      = document.getElementById('gallery')!;
+  const galleryLoad  = document.getElementById('gallery-loading')!;
+  const galleryEmpty = document.getElementById('gallery-empty')!;
+  const imgCount     = document.getElementById('img-count')!;
+  const dropZone     = document.getElementById('drop-zone')!;
+  const fileInput    = document.getElementById('file-input') as HTMLInputElement;
+  const uploadIdle   = document.getElementById('upload-idle')!;
+  const uploadActive = document.getElementById('upload-active')!;
+  const uploadFileName = document.getElementById('upload-file-name')!;
+  const xhrFill      = document.getElementById('xhr-fill') as HTMLElement;
+  const xhrPct       = document.getElementById('xhr-pct')!;
+  const xhrSpeed     = document.getElementById('xhr-speed')!;
+  const xhrOf        = document.getElementById('xhr-of')!;
+  const batchBar     = document.getElementById('batch-bar')!;
+  const batchSteps   = document.getElementById('batch-steps')!;
+  const uploadError  = document.getElementById('upload-error')!;
+  const loadMoreWrap = document.getElementById('load-more-wrap')!;
+  const loadMoreBtn  = document.getElementById('load-more-btn')!;
+  const quotaFill    = document.getElementById('quota-fill') as HTMLElement;
+  const quotaText    = document.getElementById('quota-text')!;
+  const quotaNumbers = document.getElementById('quota-numbers')!;
+  const galleryActions = document.getElementById('gallery-actions')!;
+  const tpl          = document.getElementById('img-tpl') as HTMLTemplateElement;
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function fmt(b: number) {
+    if (b < 1024) return `${b} B`;
+    if (b < 1048576) return `${(b/1024).toFixed(1)} KB`;
+    return `${(b/1048576).toFixed(1)} MB`;
+  }
+  function fmtDate(iso: string) {
+    return new Date(iso + (iso.endsWith('Z') ? '' : 'Z')).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function extOf(ct: string) {
+    const map: Record<string,string> = { 'image/jpeg':'jpg','image/png':'png','image/gif':'gif','image/webp':'webp','image/avif':'avif','image/svg+xml':'svg','image/bmp':'bmp' };
+    return map[ct] ?? ct.split('/')[1] ?? '?';
+  }
+  function showErr(msg: string) {
+    uploadError.className = 'alert alert-error';
+    uploadError.textContent = msg;
+    setTimeout(() => { uploadError.className = 'alert'; }, 8000);
+  }
+
+  // ── Quota bar ─────────────────────────────────────────────────────────────
+  function updateQuota() {
+    const pct = uploadsLimit > 0 ? Math.min((uploadsUsed / uploadsLimit) * 100, 100) : 0;
+    quotaFill.style.width = `${pct}%`;
+    quotaFill.className = 'quota-fill' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warn' : '');
+    const remaining = Math.max(uploadsLimit - uploadsUsed, 0);
+    quotaText.textContent = remaining === 0
+      ? 'Limit reached — resets in < 1 hour'
+      : `${remaining} upload${remaining !== 1 ? 's' : ''} remaining this hour`;
+    quotaNumbers.innerHTML = `<span>${uploadsUsed} used</span><span>${uploadsLimit} / hr limit</span>`;
+  }
+
+  // ── Gallery ───────────────────────────────────────────────────────────────
+  function makeCard(img: ImageItem): HTMLElement {
+    const node = tpl.content.cloneNode(true) as DocumentFragment;
+    const card = node.querySelector('.img-card') as HTMLElement;
+    card.dataset.id = String(img.id);
+
+    const imgEl = card.querySelector('img') as HTMLImageElement;
+    imgEl.src = img.url;
+    imgEl.alt = img.filename;
+
+    (card.querySelector('.img-name') as HTMLElement).textContent = img.filename;
+    (card.querySelector('.img-size') as HTMLElement).textContent = fmt(img.size);
+    (card.querySelector('.img-date') as HTMLElement).textContent = fmtDate(img.createdAt);
+    (card.querySelector('.img-type-badge') as HTMLElement).textContent = extOf(img.contentType);
+
+    const copyBtn = card.querySelector('.copy-btn') as HTMLButtonElement;
+    const copyLabel = copyBtn.querySelector('.action-label')!;
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(img.url);
+        copyLabel.textContent = 'Copied!';
+        copyBtn.classList.add('copied');
+        setTimeout(() => { copyLabel.textContent = 'Copy URL'; copyBtn.classList.remove('copied'); }, 2000);
+      } catch { prompt('Copy this URL:', img.url); }
+    });
+
+    const delBtn = card.querySelector('.delete-btn') as HTMLButtonElement;
+    delBtn.addEventListener('click', async () => {
+      if (!confirm(`Delete "${img.filename}"?\nThis cannot be undone.`)) return;
+      delBtn.disabled = true;
+      card.style.opacity = '.5';
+      try {
+        const res = await fetch(`/api/images/${img.id}`, { method: 'DELETE' });
+        const json = await res.json() as { ok?: boolean; error?: string };
+        if (json.ok) {
+          card.remove();
+          images = images.filter(i => i.id !== img.id);
+          uploadsUsed = Math.max(uploadsUsed - 0, uploadsUsed); // keep quota same (deletion doesn't restore quota)
+          updateCount();
+          if (images.length === 0) { gallery.hidden = true; galleryEmpty.hidden = false; galleryActions.hidden = true; }
+        } else { alert(json.error ?? 'Delete failed'); card.style.opacity = '1'; }
+      } catch { alert('Network error'); card.style.opacity = '1'; }
+      delBtn.disabled = false;
+    });
+    return card;
+  }
+
+  function updateCount() {
+    imgCount.textContent = images.length > 0 ? String(images.length) : '';
+  }
+
+  // ── Load images ───────────────────────────────────────────────────────────
+  async function loadImages(append = false) {
+    if (!append) { galleryLoad.hidden = false; gallery.hidden = true; galleryEmpty.hidden = true; }
+    try {
+      const res = await fetch(`/api/images?limit=${LIMIT}&offset=${offset}`);
+      if (res.status === 401) { window.location.href = '/login'; return; }
+      const data = await res.json() as ImagesResponse;
+      if (!data.ok) throw new Error(data.error ?? 'Failed to load');
+
+      if (!append) {
+        uploadsUsed = data.uploadsUsed ?? 0;
+        uploadsLimit = data.uploadsLimit ?? 10;
+        updateQuota();
+      }
+
+      const newImgs = data.images ?? [];
+      if (append) {
+        newImgs.forEach(img => { images.push(img); gallery.appendChild(makeCard(img)); });
+      } else {
+        images = newImgs;
+        gallery.innerHTML = '';
+        newImgs.forEach(img => gallery.appendChild(makeCard(img)));
+      }
+      offset += newImgs.length;
+      updateCount();
+      galleryLoad.hidden = true;
+      if (images.length === 0) { galleryEmpty.hidden = false; galleryActions.hidden = true; }
+      else { gallery.hidden = false; galleryActions.hidden = false; }
+      loadMoreWrap.hidden = newImgs.length < LIMIT;
+    } catch (err) {
+      galleryLoad.hidden = true;
+      galleryEmpty.hidden = false;
+      console.error(err);
+    }
+  }
+
+  // ── XHR upload with real-time progress ───────────────────────────────────
+  function uploadXHR(file: File): Promise<{ ok: boolean; image?: ImageItem; error?: string }> {
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      const fd = new FormData();
+      fd.append('file', file);
+      let startTime = Date.now();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (!e.lengthComputable) return;
+        const pct = Math.round((e.loaded / e.total) * 100);
+        xhrFill.style.width = `${pct}%`;
+        xhrPct.textContent = `${pct}%`;
+        const elapsed = (Date.now() - startTime) / 1000;
+        const speed = elapsed > 0.5 ? e.loaded / elapsed : 0;
+        xhrSpeed.textContent = speed > 0 ? `${fmt(Math.round(speed))}/s` : '';
+        xhrOf.textContent = `${fmt(e.loaded)} / ${fmt(e.total)}`;
+      });
+
+      xhr.addEventListener('load', () => {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch { resolve({ ok: false, error: 'Invalid response' }); }
+      });
+      xhr.addEventListener('error', () => resolve({ ok: false, error: 'Network error' }));
+      xhr.addEventListener('timeout', () => resolve({ ok: false, error: 'Upload timed out' }));
+
+      xhr.open('POST', '/api/upload');
+      xhr.timeout = 120000;
+      xhr.send(fd);
+    });
+  }
+
+  async function uploadFiles(files: File[]) {
+    uploadError.className = 'alert';
+    const valid = files.filter(f => {
+      if (!ALLOWED.has(f.type)) { showErr(`"${f.name}" is not a supported image type.`); return false; }
+      if (f.size > MAX_SIZE) { showErr(`"${f.name}" exceeds the 10 MB limit (${fmt(f.size)}).`); return false; }
+      if (f.size === 0) { showErr(`"${f.name}" is empty.`); return false; }
+      return true;
+    });
+    if (valid.length === 0) return;
+
+    // Build batch step indicators
+    batchSteps.innerHTML = '';
+    const steps = valid.map(() => { const d = document.createElement('div'); d.className = 'batch-step'; batchSteps.appendChild(d); return d; });
+    batchBar.hidden = false;
+
+    uploadIdle.hidden = true;
+    uploadActive.hidden = false;
+
+    let successCount = 0;
+    for (let i = 0; i < valid.length; i++) {
+      const file = valid[i];
+      steps[i].className = 'batch-step active';
+      uploadFileName.textContent = valid.length > 1 ? `Uploading "${file.name}" (${i+1}/${valid.length})` : `Uploading "${file.name}"`;
+      xhrFill.style.width = '0%';
+      xhrPct.textContent = '0%';
+      xhrSpeed.textContent = '';
+      xhrOf.textContent = '';
+
+      try {
+        const json = await uploadXHR(file);
+        if (json.ok && json.image) {
+          images.unshift(json.image);
+          gallery.prepend(makeCard(json.image));
+          gallery.hidden = false;
+          galleryEmpty.hidden = true;
+          galleryActions.hidden = false;
+          offset++;
+          uploadsUsed++;
+          updateCount();
+          updateQuota();
+          steps[i].className = 'batch-step done';
+          successCount++;
+        } else {
+          steps[i].className = 'batch-step error';
+          showErr(json.error ?? `Failed to upload "${file.name}"`);
+        }
+      } catch (err) {
+        steps[i].className = 'batch-step error';
+        showErr(`Upload failed for "${file.name}". Please try again.`);
+        console.error(err);
+      }
+    }
+
+    // Done
+    setTimeout(() => {
+      uploadIdle.hidden = false;
+      uploadActive.hidden = true;
+      batchBar.hidden = true;
+    }, 1800);
+    fileInput.value = '';
+  }
+
+  // ── Events ────────────────────────────────────────────────────────────────
+  fileInput.addEventListener('change', () => {
+    const files = Array.from(fileInput.files ?? []);
+    if (files.length > 0) uploadFiles(files);
+  });
+
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', (e) => {
+    if (!dropZone.contains(e.relatedTarget as Node)) dropZone.classList.remove('drag-over');
+  });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer?.files ?? []).filter(f => f.type.startsWith('image/'));
+    if (files.length > 0) uploadFiles(files);
+  });
+
+  loadMoreBtn.addEventListener('click', () => loadImages(true));
+
+  document.getElementById('logout-btn')!.addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/';
+  });
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  loadImages();
+</script>
+
+</Layout>

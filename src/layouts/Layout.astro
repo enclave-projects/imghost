@@ -1,0 +1,220 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = 'Fast, free image hosting powered by Cloudflare.' } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <title>{title} · ImgHost</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style is:global>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      [hidden] { display: none !important; }
+
+      :root {
+        /* Core palette */
+        --bg:            #f0f2f8;
+        --surface:       #ffffff;
+        --surface-2:     #f7f8fc;
+        --surface-3:     #eef0f8;
+        --border:        #e2e5f0;
+        --border-strong: #c9cde0;
+
+        /* Brand */
+        --primary:       #5b5ef4;
+        --primary-hover: #4a4de0;
+        --primary-light: #eeedfe;
+        --primary-glow:  rgba(91,94,244,.18);
+
+        /* Semantic */
+        --success:       #10b981;
+        --success-light: #ecfdf5;
+        --warning:       #f59e0b;
+        --warning-light: #fffbeb;
+        --error:         #ef4444;
+        --error-light:   #fef2f2;
+
+        /* Text */
+        --text:          #111827;
+        --text-2:        #374151;
+        --text-muted:    #6b7280;
+        --text-faint:    #9ca3af;
+
+        /* Radius */
+        --r-xs:  4px;
+        --r-sm:  8px;
+        --r:     12px;
+        --r-lg:  16px;
+        --r-xl:  24px;
+        --r-full:9999px;
+
+        /* Shadows */
+        --shadow-xs: 0 1px 2px rgb(0 0 0 / .05);
+        --shadow:    0 1px 4px rgb(0 0 0 / .07), 0 2px 8px rgb(0 0 0 / .05);
+        --shadow-md: 0 4px 16px rgb(0 0 0 / .10), 0 1px 4px rgb(0 0 0 / .06);
+        --shadow-lg: 0 8px 32px rgb(0 0 0 / .12), 0 2px 8px rgb(0 0 0 / .06);
+
+        /* Transitions */
+        --ease: cubic-bezier(.4,0,.2,1);
+      }
+
+      html, body {
+        min-height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 15px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      a { color: var(--primary); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+
+      /* ── Buttons ─────────────────────────────────────────── */
+      button, .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 9px 18px;
+        border-radius: var(--r-sm);
+        font-size: 14px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        border: 1.5px solid transparent;
+        transition: background .15s var(--ease), border-color .15s var(--ease),
+                    transform .1s var(--ease), box-shadow .15s var(--ease), opacity .15s;
+        white-space: nowrap;
+        user-select: none;
+        letter-spacing: -.01em;
+      }
+      button:active, .btn:active { transform: scale(.98); }
+
+      .btn-primary {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+        box-shadow: 0 2px 8px var(--primary-glow);
+      }
+      .btn-primary:hover {
+        background: var(--primary-hover);
+        border-color: var(--primary-hover);
+        box-shadow: 0 4px 16px var(--primary-glow);
+      }
+      .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+      .btn-outline {
+        background: var(--surface);
+        color: var(--text-2);
+        border-color: var(--border);
+        box-shadow: var(--shadow-xs);
+      }
+      .btn-outline:hover { background: var(--surface-2); border-color: var(--border-strong); }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--text-muted);
+        border-color: transparent;
+        padding: 7px 12px;
+        font-weight: 500;
+      }
+      .btn-ghost:hover { background: var(--surface-3); color: var(--text); }
+
+      /* ── Inputs ──────────────────────────────────────────── */
+      input, textarea {
+        width: 100%;
+        padding: 10px 13px;
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-sm);
+        font-size: 14.5px;
+        font-family: inherit;
+        color: var(--text);
+        background: var(--surface);
+        outline: none;
+        transition: border-color .15s, box-shadow .15s;
+      }
+      input:focus, textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3.5px var(--primary-glow);
+      }
+      input::placeholder { color: var(--text-faint); }
+
+      /* ── Card ────────────────────────────────────────────── */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        box-shadow: var(--shadow);
+        padding: 28px;
+      }
+
+      /* ── Form helpers ────────────────────────────────────── */
+      .label {
+        display: block;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+      }
+      .field { margin-bottom: 18px; }
+
+      /* ── Alerts ──────────────────────────────────────────── */
+      .alert {
+        display: none;
+        padding: 11px 14px;
+        border-radius: var(--r-sm);
+        font-size: 13.5px;
+        font-weight: 500;
+        margin-bottom: 14px;
+        align-items: center;
+        gap: 8px;
+      }
+      .alert-error {
+        display: flex;
+        background: var(--error-light);
+        color: var(--error);
+        border: 1px solid #fecaca;
+      }
+      .alert-success {
+        display: flex;
+        background: var(--success-light);
+        color: var(--success);
+        border: 1px solid #a7f3d0;
+      }
+      .alert-warning {
+        display: flex;
+        background: var(--warning-light);
+        color: #92400e;
+        border: 1px solid #fde68a;
+      }
+
+      /* ── Spinner ─────────────────────────────────────────── */
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .spinner {
+        width: 24px; height: 24px;
+        border: 2.5px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin .7s linear infinite;
+      }
+    </style>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

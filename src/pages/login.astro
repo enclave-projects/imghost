@@ -1,0 +1,240 @@
+---
+import Layout from '../layouts/Layout.astro';
+export const prerender = false;
+---
+<Layout title="Sign In">
+  <div class="auth-wrap">
+    <!-- Left panel -->
+    <aside class="auth-panel">
+      <div class="panel-inner">
+        <a href="/" class="logo">
+          <div class="logo-icon">
+            <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=28" alt="" width="28" height="28" />
+          </div>
+          ImgHost
+        </a>
+        <div class="panel-content">
+          <img src="https://img.icons8.com/?id=qZ1FibjKOsRJ&format=png&size=96" alt="Upload" class="hero-icon" width="96" height="96" />
+          <h2>Your images, everywhere.</h2>
+          <p>Upload once, share forever. Lightning-fast delivery from Cloudflare's global network.</p>
+          <ul class="feature-list">
+            <li>
+              <span class="feat-dot success"></span>
+              CDN-backed URLs instantly ready
+            </li>
+            <li>
+              <span class="feat-dot"></span>
+              PBKDF2-secured, private by default
+            </li>
+            <li>
+              <span class="feat-dot"></span>
+              Up to 10 MB per image
+            </li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right form -->
+    <main class="auth-form-wrap">
+      <div class="auth-form">
+        <a href="/" class="back-link">← Back to home</a>
+        <h1>Welcome back</h1>
+        <p class="sub">Sign in to your ImgHost account</p>
+
+        <div id="error" class="alert"></div>
+
+        <form id="form">
+          <div class="field">
+            <label class="label" for="email">Email address</label>
+            <input id="email" type="email" name="email" autocomplete="email" required placeholder="you@example.com" />
+          </div>
+          <div class="field">
+            <label class="label" for="password">Password</label>
+            <input id="password" type="password" name="password" autocomplete="current-password" required placeholder="••••••••" />
+          </div>
+          <button type="submit" class="btn btn-primary submit-btn" id="submit">
+            Sign in
+            <svg id="submit-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </form>
+
+        <div class="divider"><span>New to ImgHost?</span></div>
+        <a href="/signup" class="btn btn-outline switch-btn">Create a free account</a>
+      </div>
+    </main>
+  </div>
+
+  <style>
+    .auth-wrap {
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* Left panel */
+    .auth-panel {
+      display: none;
+      width: 420px;
+      flex-shrink: 0;
+      background: linear-gradient(145deg, #5b5ef4 0%, #7c7ff7 60%, #a78bfa 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    @media (min-width: 900px) { .auth-panel { display: flex; } }
+
+    .auth-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .panel-inner {
+      position: relative;
+      z-index: 1;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 18px;
+      text-decoration: none;
+      letter-spacing: -.02em;
+    }
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: rgba(255,255,255,.2);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(8px);
+    }
+
+    .panel-content {
+      margin-top: auto;
+      margin-bottom: auto;
+      padding-top: 40px;
+    }
+    .hero-icon { margin-bottom: 24px; filter: drop-shadow(0 8px 24px rgba(0,0,0,.2)); }
+    .panel-content h2 {
+      font-size: 1.7rem; font-weight: 800; color: #fff;
+      letter-spacing: -.03em; line-height: 1.2; margin-bottom: 12px;
+    }
+    .panel-content p { color: rgba(255,255,255,.8); font-size: 14.5px; line-height: 1.6; margin-bottom: 28px; }
+
+    .feature-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .feature-list li {
+      display: flex; align-items: center; gap: 10px;
+      color: rgba(255,255,255,.9); font-size: 13.5px; font-weight: 500;
+    }
+    .feat-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(255,255,255,.5);
+    }
+    .feat-dot.success { background: #34d399; }
+
+    /* Right form */
+    .auth-form-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      background: var(--bg);
+    }
+
+    .auth-form {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .back-link {
+      display: inline-block;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 32px;
+      transition: color .15s;
+    }
+    .back-link:hover { color: var(--text); text-decoration: none; }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -.04em;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .sub { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; }
+
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 15px;
+      border-radius: var(--r-sm);
+      margin-top: 4px;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0 16px;
+      color: var(--text-faint);
+      font-size: 13px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .switch-btn { width: 100%; padding: 11px; font-size: 14px; }
+  </style>
+
+  <script>
+    const form = document.getElementById('form') as HTMLFormElement;
+    const errorEl = document.getElementById('error')!;
+    const submitBtn = document.getElementById('submit') as HTMLButtonElement;
+    const arrow = document.getElementById('submit-arrow')!;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.className = 'alert';
+      errorEl.textContent = '';
+      submitBtn.disabled = true;
+      arrow.hidden = true;
+      submitBtn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px"></span> Signing in…';
+
+      const data = new FormData(form);
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: data.get('email'), password: data.get('password') }),
+        });
+        const json = await res.json() as { ok?: boolean; error?: string };
+        if (json.ok) {
+          window.location.href = '/dashboard';
+        } else {
+          errorEl.className = 'alert alert-error';
+          errorEl.textContent = json.error ?? 'Login failed';
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Sign in <svg id="submit-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+        }
+      } catch {
+        errorEl.className = 'alert alert-error';
+        errorEl.textContent = 'Network error. Please try again.';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign in →';
+      }
+    });
+  </script>
+</Layout>
