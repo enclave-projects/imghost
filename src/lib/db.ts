@@ -234,6 +234,17 @@ export async function getPaymentByOrderId(
     .first<Payment>();
 }
 
+export async function getUserPayments(
+  db: D1Database,
+  userId: number,
+): Promise<Payment[]> {
+  const { results } = await db
+    .prepare('SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC')
+    .bind(userId)
+    .all<Payment>();
+  return results ?? [];
+}
+
 export async function updatePaymentStatus(
   db: D1Database,
   orderId: string,

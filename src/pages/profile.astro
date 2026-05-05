@@ -1,0 +1,621 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { env } from 'cloudflare:workers';
+import { getUserById, getUserPayments } from '../lib/db';
+import { PLANS, type PlanId } from '../lib/plans';
+
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/login?next=/profile');
+
+const dbUser = env?.DB ? await getUserById(env.DB, user.id) : null;
+const currentPlanId = (dbUser?.plan ?? 'free') as PlanId;
+const currentPlan = PLANS[currentPlanId];
+const payments = env?.DB ? await getUserPayments(env.DB, user.id) : [];
+const paidInvoices = payments.filter((p) => p.status === 'PAID');
+
+const fmtDate = (iso: string) =>
+  new Date(iso + (iso.endsWith('Z') ? '' : 'Z')).toLocaleDateString(undefined, {
+    day: '2-digit', month: 'short', year: 'numeric',
+  });
+const fmtMoney = (n: number, ccy: string) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: ccy || 'INR', maximumFractionDigits: 2 }).format(n);
+---
+<Layout title="Profile &amp; billing">
+
+<div class="app-shell" id="app-shell">
+
+  <!-- Sidebar (same pattern as dashboard) -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <a href="/" class="logo">
+        <span class="logo-dot"></span>
+        <span class="logo-name">ImgHost</span>
+      </a>
+      <button class="sidebar-close" id="sidebar-close" type="button" aria-label="Close menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <nav class="side-nav">
+      <span class="side-section">Workspace</span>
+      <a href="/dashboard" class="side-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Library
+      </a>
+
+      <span class="side-section">Account</span>
+      <a href="/profile" class="side-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        Profile &amp; billing
+      </a>
+      <a href="/pricing" class="side-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8.5 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9 8.5 12 2"/></svg>
+        Plans
+      </a>
+      <a href="/" class="side-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 12 3l9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>
+        Home
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <a href="/pricing" class={`plan-pill plan-pill-${currentPlan.id}`}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8.5 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9 8.5 12 2"/></svg>
+        <span class="plan-pill-text">
+          <span class="plan-pill-label">Current plan</span>
+          <span class="plan-pill-name">{currentPlan.name}</span>
+        </span>
+        {currentPlan.id === 'free' && <span class="plan-pill-cta">Upgrade →</span>}
+      </a>
+      <button class="btn btn-outline btn-block logout-btn" id="logout-btn" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign out
+      </button>
+    </div>
+  </aside>
+
+  <div class="sidebar-scrim" id="sidebar-scrim"></div>
+
+  <!-- Content -->
+  <div class="content-area">
+
+    <header class="top-bar">
+      <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="page-title">
+        <span class="page-eyebrow">Account</span>
+        <h1>Profile &amp; billing</h1>
+      </div>
+      <div class="top-bar-right">
+        <div class="user-chip">
+          <div class="avatar">{user.email.charAt(0).toUpperCase()}</div>
+          <span class="user-email">{user.email}</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+
+      <!-- Flash message target -->
+      <div id="flash" class="flash" hidden></div>
+
+      <!-- ─── Account card ─── -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Account</h2>
+          <p class="card-sub">Your ImgHost identity.</p>
+        </div>
+        <div class="kv-rows">
+          <div class="kv-row">
+            <span class="kv-key">Email</span>
+            <span class="kv-val">{user.email}</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">Customer ID</span>
+            <span class="kv-val mono">user_{user.id}</span>
+          </div>
+          {dbUser?.created_at && (
+            <div class="kv-row">
+              <span class="kv-key">Member since</span>
+              <span class="kv-val">{fmtDate(dbUser.created_at)}</span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <!-- ─── Plan card ─── -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Current plan</h2>
+          <p class="card-sub">Manage your subscription tier.</p>
+        </div>
+
+        <div class={`plan-hero plan-hero-${currentPlan.id}`}>
+          <div class="plan-hero-left">
+            <span class="plan-hero-eyebrow">Active plan</span>
+            <div class="plan-hero-name">{currentPlan.name}</div>
+            <div class="plan-hero-price">
+              {currentPlan.priceInr === 0
+                ? <span>Free forever</span>
+                : <><span class="amt">₹{currentPlan.priceInr}</span><span class="per">/ one-time</span></>}
+            </div>
+            {dbUser?.plan_updated_at && (
+              <div class="plan-hero-since">Active since {fmtDate(dbUser.plan_updated_at)}</div>
+            )}
+          </div>
+          <ul class="plan-hero-features">
+            {currentPlan.features.slice(0, 3).map((f) => (
+              <li>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <!-- Plan actions -->
+        <div class="plan-actions">
+          {currentPlan.id === 'free' && (
+            <>
+              <p class="plan-note">You are on the Free plan. Upgrade anytime.</p>
+              <a href="/pricing" class="btn btn-primary">Upgrade plan</a>
+            </>
+          )}
+          {currentPlan.id === 'pro' && (
+            <>
+              <p class="plan-note">Need more headroom? Upgrade to Master for 25 GB storage and higher upload caps.</p>
+              <div class="plan-actions-row">
+                <a href="/pricing" class="btn btn-primary">Upgrade to Master</a>
+                <button class="btn btn-outline" data-cancel-btn data-target="free">Cancel plan</button>
+              </div>
+            </>
+          )}
+          {currentPlan.id === 'master' && (
+            <>
+              <p class="plan-note">You are on the top tier. You can downgrade to Pro or cancel to return to Free.</p>
+              <div class="plan-actions-row">
+                <button class="btn btn-outline" data-cancel-btn data-target="pro">Downgrade to Pro</button>
+                <button class="btn btn-outline" data-cancel-btn data-target="free">Cancel plan</button>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      <!-- ─── Invoices card ─── -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Invoices</h2>
+          <p class="card-sub">{paidInvoices.length === 0 ? 'No invoices yet. Once you upgrade, receipts will appear here.' : `${paidInvoices.length} paid invoice${paidInvoices.length === 1 ? '' : 's'}.`}</p>
+        </div>
+
+        {paidInvoices.length === 0 ? (
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <p class="empty-title">No invoices yet</p>
+            <p class="empty-sub">Your paid receipts will appear here with a download option.</p>
+            <a href="/pricing" class="btn btn-outline" style="margin-top:4px;">View plans</a>
+          </div>
+        ) : (
+          <div class="invoice-list">
+            {paidInvoices.map((p, i) => (
+              <div class="invoice-row">
+                <div class="inv-main">
+                  <div class="inv-num">INV-{String(p.id).padStart(6, '0')}</div>
+                  <div class="inv-desc">
+                    ImgHost {PLANS[p.plan as PlanId]?.name ?? p.plan} plan
+                    <span class="inv-dot">·</span>
+                    <span class="inv-date">{fmtDate(p.created_at)}</span>
+                  </div>
+                </div>
+                <div class="inv-meta">
+                  <span class="inv-amount">{fmtMoney(p.amount, p.currency)}</span>
+                  <span class="status-dot status-dot-paid">Paid</span>
+                </div>
+                <a href={`/invoice/${p.order_id}`} target="_blank" rel="noopener" class="btn btn-ghost btn-sm inv-download">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <!-- ─── Support card ─── -->
+      <section class="card support-card">
+        <div class="support-left">
+          <div class="support-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div>
+            <h3>Need a hand?</h3>
+            <p class="card-sub">We usually reply within 24 hours. Include your Order ID for billing questions.</p>
+          </div>
+        </div>
+        <a href="mailto:support@enclaveprojects.com?subject=ImgHost%20support%20request" class="btn btn-primary">
+          Email support
+        </a>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div id="confirm-modal" class="app-modal" hidden>
+  <div class="app-modal-backdrop" data-close></div>
+  <div class="app-modal-box">
+    <h3 id="confirm-title">Cancel plan?</h3>
+    <p class="app-modal-sub" id="confirm-sub">This will take effect immediately. Plan changes are not refundable.</p>
+    <div class="app-modal-actions">
+      <button class="btn btn-ghost btn-sm" data-close type="button">Keep current plan</button>
+      <button class="btn btn-danger btn-sm" id="confirm-go" type="button">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* ─── App shell (mirrors dashboard) ─────────────────────────── */
+  .app-shell {
+    --sidebar-w: 240px;
+    --topbar-h: 64px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    background: var(--canvas);
+  }
+  @media (max-width: 900px) { .app-shell { grid-template-columns: 1fr; } }
+
+  .sidebar {
+    position: sticky; top: 0; height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 18px 14px 16px;
+    z-index: 60;
+  }
+  @media (max-width: 900px) {
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 280px; height: 100vh;
+      transform: translateX(-100%);
+      transition: transform .25s var(--ease);
+      box-shadow: var(--shadow-lg);
+    }
+    .app-shell.menu-open .sidebar { transform: translateX(0); }
+  }
+  .sidebar-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 18px; }
+  .logo {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--font-display); font-weight: 600; font-size: 16px;
+    letter-spacing: -0.4px; color: var(--text);
+  }
+  .logo-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: conic-gradient(from 210deg, var(--g-violet), var(--g-magenta), var(--g-orange), var(--g-violet));
+    box-shadow: 0 0 20px rgba(212,77,240,.35); flex-shrink: 0;
+  }
+  .sidebar-close { display: none; background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; border-radius: 100px; }
+  .sidebar-close:hover { background: var(--surface-2); color: var(--text); }
+  @media (max-width: 900px) { .sidebar-close { display: flex; } }
+
+  .side-nav { flex: 1; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+  .side-section { padding: 14px 12px 6px; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint); }
+  .side-section:first-child { padding-top: 4px; }
+  .side-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 10px;
+    font-size: 14px; font-weight: 500; letter-spacing: -0.14px;
+    color: var(--text-muted); cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .side-item svg { flex-shrink: 0; opacity: .85; }
+  .side-item:hover { background: var(--surface-2); color: var(--text); }
+  .side-item.active { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+
+  .sidebar-foot { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .plan-pill {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 12px 12px 14px; border-radius: 14px;
+    text-decoration: none; transition: transform .15s ease;
+  }
+  .plan-pill:hover { transform: translateY(-1px); }
+  .plan-pill-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  .plan-pill-label { font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; opacity: .8; }
+  .plan-pill-name { font-family: var(--font-display); font-size: 15px; font-weight: 500; letter-spacing: -0.02em; margin-top: 2px; }
+  .plan-pill-cta { font-size: 12px; font-weight: 500; letter-spacing: -0.12px; opacity: .9; }
+  .plan-pill-free   { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  .plan-pill-pro    { background: linear-gradient(135deg, var(--g-violet), var(--g-magenta)); color: #fff; box-shadow: 0 4px 18px rgba(106,76,245,.35); }
+  .plan-pill-master { background: linear-gradient(135deg, var(--g-orange), var(--g-coral)); color: #fff; box-shadow: 0 4px 18px rgba(255,122,61,.35); }
+  .btn-block { width: 100%; }
+  .logout-btn { justify-content: flex-start; }
+
+  .sidebar-scrim { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(2px); z-index: 55; }
+  @media (max-width: 900px) { .app-shell.menu-open .sidebar-scrim { display: block; } }
+
+  .content-area { min-width: 0; display: flex; flex-direction: column; }
+
+  .top-bar {
+    position: sticky; top: 0; z-index: 40; height: var(--topbar-h);
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 28px;
+    background: rgba(9,9,9,.78);
+    backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid var(--border);
+  }
+  @media (max-width: 600px) { .top-bar { padding: 0 16px; } }
+  .menu-toggle { display: none; background: transparent; border: none; color: var(--text); cursor: pointer; padding: 8px; border-radius: 100px; }
+  .menu-toggle:hover { background: var(--surface); }
+  @media (max-width: 900px) { .menu-toggle { display: flex; } }
+  .page-title { display: flex; flex-direction: column; line-height: 1.1; flex: 1; min-width: 0; }
+  .page-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint); }
+  .page-title h1 { font-family: var(--font-display); font-size: clamp(20px, 2.4vw, 26px); font-weight: 500; letter-spacing: -0.03em; color: var(--text); margin-top: 2px; }
+  .user-chip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; background: var(--surface); border: 1px solid var(--border); border-radius: 100px; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--g-violet), var(--g-magenta)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .user-email { font-size: 13px; font-weight: 500; color: var(--text-muted); letter-spacing: -0.13px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 600px) { .user-email { display: none; } }
+
+  .main { max-width: 880px; margin: 0 auto; width: 100%; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+  @media (max-width: 600px) { .main { padding: 20px 16px; gap: 14px; } }
+
+  /* ─── Flash banner ─────────────────────────────────────────── */
+  .flash {
+    padding: 12px 16px; border-radius: 12px;
+    font-size: 14px; font-weight: 500; letter-spacing: -0.14px;
+    border: 1px solid var(--border);
+  }
+  .flash.success { background: rgba(34,197,94,.1); color: #4ade80; border-color: rgba(34,197,94,.3); }
+  .flash.error   { background: rgba(239,68,68,.1); color: #f87171; border-color: rgba(239,68,68,.3); }
+
+  /* ─── Cards ────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 24px 28px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  @media (max-width: 600px) { .card { padding: 20px; gap: 16px; } }
+  .card-head h2 {
+    font-family: var(--font-display);
+    font-size: 20px; font-weight: 500;
+    letter-spacing: -0.03em; color: var(--text);
+  }
+  .card-sub {
+    font-size: 13.5px; color: var(--text-muted);
+    letter-spacing: -0.14px; margin-top: 4px; line-height: 1.4;
+  }
+
+  /* ─── Key-value list ──────────────────────────────────────── */
+  .kv-rows { display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+  .kv-row {
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+    font-size: 14px; letter-spacing: -0.14px;
+  }
+  .kv-key { color: var(--text-muted); }
+  .kv-val { color: var(--text); font-weight: 500; text-align: right; word-break: break-all; }
+  .kv-val.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; background: var(--canvas); border: 1px solid var(--border); padding: 3px 8px; border-radius: 6px; }
+
+  /* ─── Plan hero ────────────────────────────────────────────── */
+  .plan-hero {
+    position: relative; overflow: hidden;
+    border-radius: 14px; padding: 24px;
+    display: flex; gap: 32px; flex-wrap: wrap;
+    color: var(--text);
+  }
+  .plan-hero-free {
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .plan-hero-pro {
+    background: linear-gradient(135deg, #6a4cf5 0%, #8b5cf6 50%, #d44df0 100%);
+    color: #fff;
+  }
+  .plan-hero-pro::after, .plan-hero-master::after {
+    content: ''; position: absolute; inset: auto -40px -40px auto;
+    width: 220px; height: 220px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,.25), transparent 60%);
+    pointer-events: none;
+  }
+  .plan-hero-master {
+    background: linear-gradient(135deg, #cc3b1a 0%, #ff7a3d 50%, #d44df0 100%);
+    color: #fff;
+  }
+  .plan-hero-left { flex: 1; min-width: 220px; position: relative; z-index: 1; }
+  .plan-hero-eyebrow {
+    font-size: 11px; font-weight: 500; letter-spacing: .12em;
+    text-transform: uppercase; opacity: .85;
+  }
+  .plan-hero-name {
+    font-family: var(--font-display);
+    font-size: 40px; font-weight: 500;
+    letter-spacing: -0.04em; line-height: 1;
+    margin-top: 10px;
+  }
+  .plan-hero-price {
+    margin-top: 10px;
+    font-family: var(--font-display);
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .plan-hero-price .amt { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+  .plan-hero-price .per { font-family: var(--font-body); font-size: 13px; opacity: .8; letter-spacing: -0.13px; }
+  .plan-hero-since { font-size: 12.5px; opacity: .75; margin-top: 10px; letter-spacing: -0.13px; }
+
+  .plan-hero-features {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 8px;
+    position: relative; z-index: 1;
+    font-size: 14px; letter-spacing: -0.14px;
+  }
+  .plan-hero-features li { display: flex; align-items: flex-start; gap: 8px; }
+  .plan-hero-features svg { flex-shrink: 0; margin-top: 4px; opacity: .95; }
+
+  .plan-actions { display: flex; flex-direction: column; gap: 10px; }
+  .plan-actions-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .plan-note { font-size: 13.5px; color: var(--text-muted); letter-spacing: -0.14px; line-height: 1.4; }
+
+  /* ─── Invoice list ─────────────────────────────────────────── */
+  .invoice-list { display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+  .invoice-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 16px; align-items: center;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+  }
+  @media (max-width: 640px) {
+    .invoice-row { grid-template-columns: 1fr; gap: 8px; padding: 16px 0; }
+  }
+  .inv-main { min-width: 0; }
+  .inv-num {
+    font-family: var(--font-display);
+    font-size: 15px; font-weight: 500; letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .inv-desc {
+    margin-top: 4px; font-size: 13px; color: var(--text-muted);
+    letter-spacing: -0.13px;
+  }
+  .inv-dot { margin: 0 4px; }
+  .inv-meta { display: flex; align-items: center; gap: 12px; }
+  .inv-amount {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 500; letter-spacing: -0.02em; color: var(--text);
+  }
+  .status-dot {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 100px;
+    font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  }
+  .status-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .status-dot-paid { background: rgba(34,197,94,.15); color: #4ade80; }
+  .inv-download { white-space: nowrap; }
+
+  /* ─── Empty state ──────────────────────────────────────────── */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; padding: 40px 24px; text-align: center;
+    border: 1px dashed var(--border); border-radius: 14px;
+  }
+  .empty-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted);
+  }
+  .empty-title { font-family: var(--font-display); font-size: 17px; font-weight: 500; letter-spacing: -0.02em; color: var(--text); }
+  .empty-sub { font-size: 13.5px; color: var(--text-muted); letter-spacing: -0.14px; max-width: 360px; line-height: 1.4; }
+
+  /* ─── Support card ─────────────────────────────────────────── */
+  .support-card {
+    flex-direction: row; align-items: center; justify-content: space-between; gap: 20px;
+  }
+  @media (max-width: 640px) { .support-card { flex-direction: column; align-items: flex-start; } }
+  .support-left { display: flex; align-items: center; gap: 14px; }
+  .support-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--g-violet), var(--g-magenta));
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 18px rgba(106,76,245,.3);
+  }
+  .support-card h3 { font-family: var(--font-display); font-size: 17px; font-weight: 500; letter-spacing: -0.02em; color: var(--text); }
+
+  /* ─── Confirm modal ────────────────────────────────────────── */
+  .app-modal { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .app-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.65); backdrop-filter: blur(6px); cursor: pointer; }
+  .app-modal-box {
+    position: relative; z-index: 1; width: 100%; max-width: 440px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+    padding: 24px; box-shadow: var(--shadow-lg);
+  }
+  .app-modal-box h3 { font-family: var(--font-display); font-size: 20px; font-weight: 500; letter-spacing: -0.03em; color: var(--text); margin-bottom: 6px; }
+  .app-modal-sub { font-size: 14px; color: var(--text-muted); letter-spacing: -0.14px; line-height: 1.4; }
+  .app-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+  .btn-danger { background: var(--error); color: #fff; border: 1px solid var(--error); }
+  .btn-danger:hover:not(:disabled) { background: #dc2626; border-color: #dc2626; }
+  .btn-danger:disabled { opacity: .5; cursor: not-allowed; }
+</style>
+
+<script>
+  // ─── Sidebar (mobile drawer) ───────────────────────────────────────
+  const appShell = document.getElementById('app-shell')!;
+  document.getElementById('menu-toggle')?.addEventListener('click', () => appShell.classList.add('menu-open'));
+  document.getElementById('sidebar-close')?.addEventListener('click', () => appShell.classList.remove('menu-open'));
+  document.getElementById('sidebar-scrim')?.addEventListener('click', () => appShell.classList.remove('menu-open'));
+
+  // ─── Logout ─────────────────────────────────────────────────────────
+  document.getElementById('logout-btn')?.addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    location.href = '/';
+  });
+
+  // ─── Flash helper ───────────────────────────────────────────────────
+  const flash = document.getElementById('flash')!;
+  function showFlash(kind: 'success' | 'error', msg: string) {
+    flash.className = `flash ${kind}`;
+    flash.textContent = msg;
+    flash.hidden = false;
+    flash.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // ─── Cancel / downgrade confirm flow ────────────────────────────────
+  const modal = document.getElementById('confirm-modal')!;
+  const confirmTitle = document.getElementById('confirm-title')!;
+  const confirmSub = document.getElementById('confirm-sub')!;
+  const confirmGo = document.getElementById('confirm-go') as HTMLButtonElement;
+  let pendingTarget: 'free' | 'pro' = 'free';
+
+  function openModal(target: 'free' | 'pro') {
+    pendingTarget = target;
+    if (target === 'free') {
+      confirmTitle.textContent = 'Cancel your plan?';
+      confirmSub.textContent = 'Your paid plan will end immediately and you will be moved to the Free tier. Uploaded files remain, but new uploads will follow Free-tier limits (500 MB storage, 10 uploads/hour). This action is not refundable.';
+    } else {
+      confirmTitle.textContent = 'Downgrade to Pro?';
+      confirmSub.textContent = 'You will move from Master to Pro immediately (5 GB storage, 30 uploads per 30 min). Past payments are not refunded.';
+    }
+    modal.hidden = false;
+  }
+  function closeModal() { modal.hidden = true; }
+
+  document.querySelectorAll<HTMLButtonElement>('[data-cancel-btn]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const target = (b.getAttribute('data-target') ?? 'free') as 'free' | 'pro';
+      openModal(target);
+    });
+  });
+  modal.querySelectorAll<HTMLElement>('[data-close]').forEach((el) => {
+    el.addEventListener('click', closeModal);
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
+
+  confirmGo.addEventListener('click', async () => {
+    confirmGo.disabled = true;
+    confirmGo.textContent = 'Working…';
+    try {
+      const res = await fetch('/api/user/cancel-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetPlan: pendingTarget }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string; message?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error ?? 'Failed to update plan');
+      closeModal();
+      showFlash('success', data.message ?? 'Your plan was updated.');
+      setTimeout(() => location.reload(), 1200);
+    } catch (err) {
+      closeModal();
+      showFlash('error', err instanceof Error ? err.message : 'Something went wrong');
+      confirmGo.disabled = false;
+      confirmGo.textContent = 'Confirm';
+    }
+  });
+</script>
+
+</Layout>

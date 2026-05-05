@@ -4,43 +4,37 @@ export const prerender = false;
 ---
 <Layout title="Sign In">
   <div class="auth-wrap">
-    <!-- Left panel -->
+    <!-- Left panel — gradient spotlight -->
     <aside class="auth-panel">
       <div class="panel-inner">
         <a href="/" class="logo">
-          <div class="logo-icon">
-            <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=28" alt="" width="28" height="28" />
-          </div>
+          <span class="logo-dot"></span>
           ImgHost
         </a>
         <div class="panel-content">
-          <img src="https://img.icons8.com/?id=qZ1FibjKOsRJ&format=png&size=96" alt="Upload" class="hero-icon" width="96" height="96" />
-          <h2>Your images, everywhere.</h2>
-          <p>Upload once, share forever. Lightning-fast delivery from Cloudflare's global network.</p>
+          <span class="panel-eyebrow">Secure by design</span>
+          <h2>Your images.<br/>Your account.<br/>Nobody else's.</h2>
+          <p>Sessions ride on HTTP-only JWTs. Passwords are hashed with PBKDF2. Every query is scoped to your user.</p>
           <ul class="feature-list">
-            <li>
-              <span class="feat-dot success"></span>
-              CDN-backed URLs instantly ready
-            </li>
-            <li>
-              <span class="feat-dot"></span>
-              PBKDF2-secured, private by default
-            </li>
-            <li>
-              <span class="feat-dot"></span>
-              Up to 10 MB per image
-            </li>
+            <li><span class="feat-dot"></span>HS256 JWT sessions</li>
+            <li><span class="feat-dot"></span>PBKDF2-SHA256 password hashing</li>
+            <li><span class="feat-dot"></span>Private R2 objects by default</li>
           </ul>
         </div>
+        <div class="panel-foot">Built on Cloudflare Workers · R2 · D1</div>
       </div>
     </aside>
 
     <!-- Right form -->
     <main class="auth-form-wrap">
       <div class="auth-form">
+        <a href="/" class="mobile-logo">
+          <span class="logo-dot"></span>
+          ImgHost
+        </a>
         <a href="/" class="back-link">← Back to home</a>
-        <h1>Welcome back</h1>
-        <p class="sub">Sign in to your ImgHost account</p>
+        <h1>Welcome<br/>back.</h1>
+        <p class="sub">Sign in to your ImgHost account.</p>
 
         <div id="error" class="alert"></div>
 
@@ -69,134 +63,157 @@ export const prerender = false;
     .auth-wrap {
       min-height: 100vh;
       display: flex;
+      background: var(--canvas);
     }
 
-    /* Left panel */
+    /* Left panel — gradient spotlight (Framer signature) */
     .auth-panel {
       display: none;
-      width: 420px;
+      width: 480px;
       flex-shrink: 0;
-      background: linear-gradient(145deg, #5b5ef4 0%, #7c7ff7 60%, #a78bfa 100%);
       position: relative;
       overflow: hidden;
+      background: linear-gradient(135deg, #4a2bc9 0%, var(--g-violet) 45%, #a028c4 80%, var(--g-magenta) 100%);
     }
-    @media (min-width: 900px) { .auth-panel { display: flex; } }
+    @media (min-width: 960px) { .auth-panel { display: flex; } }
 
     .auth-panel::before {
       content: '';
       position: absolute;
       inset: 0;
-      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      background: radial-gradient(120% 80% at 20% 10%, rgba(255,255,255,.22), transparent 55%);
+      pointer-events: none;
+    }
+    .auth-panel::after {
+      content: '';
+      position: absolute; inset: auto -80px -80px auto;
+      width: 360px; height: 360px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,122,61,.4), transparent 65%);
+      filter: blur(20px);
+      pointer-events: none;
     }
 
     .panel-inner {
-      position: relative;
-      z-index: 1;
-      padding: 40px;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
+      position: relative; z-index: 1;
+      padding: 48px;
+      display: flex; flex-direction: column;
+      height: 100%; color: #fff;
     }
 
     .logo {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      color: #fff;
-      font-weight: 800;
-      font-size: 18px;
-      text-decoration: none;
-      letter-spacing: -.02em;
+      display: inline-flex; align-items: center; gap: 10px;
+      color: #fff; font-family: var(--font-display);
+      font-weight: 600; font-size: 17px;
+      letter-spacing: -0.4px; text-decoration: none;
     }
-    .logo-icon {
-      width: 38px; height: 38px;
-      background: rgba(255,255,255,.2);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      backdrop-filter: blur(8px);
+    .logo-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 20px rgba(255,255,255,.6);
     }
 
     .panel-content {
-      margin-top: auto;
-      margin-bottom: auto;
-      padding-top: 40px;
+      margin-top: auto; margin-bottom: auto; padding-top: 48px;
+      display: flex; flex-direction: column; gap: 24px;
     }
-    .hero-icon { margin-bottom: 24px; filter: drop-shadow(0 8px 24px rgba(0,0,0,.2)); }
+    .panel-eyebrow {
+      align-self: flex-start;
+      font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+      padding: 7px 11px; border-radius: 100px;
+      background: rgba(0,0,0,.25); backdrop-filter: blur(8px);
+    }
     .panel-content h2 {
-      font-size: 1.7rem; font-weight: 800; color: #fff;
-      letter-spacing: -.03em; line-height: 1.2; margin-bottom: 12px;
+      font-family: var(--font-display);
+      font-size: clamp(34px, 4vw, 52px); font-weight: 500;
+      color: #fff; letter-spacing: -0.04em; line-height: 1.0;
     }
-    .panel-content p { color: rgba(255,255,255,.8); font-size: 14.5px; line-height: 1.6; margin-bottom: 28px; }
+    .panel-content p { color: rgba(255,255,255,.85); font-size: 16px; line-height: 1.4; letter-spacing: -0.16px; max-width: 380px; }
 
-    .feature-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .feature-list {
+      list-style: none; display: flex; flex-direction: column; gap: 12px;
+      margin-top: 12px;
+    }
     .feature-list li {
-      display: flex; align-items: center; gap: 10px;
-      color: rgba(255,255,255,.9); font-size: 13.5px; font-weight: 500;
+      display: flex; align-items: center; gap: 12px;
+      color: rgba(255,255,255,.95); font-size: 14px; font-weight: 500; letter-spacing: -0.14px;
     }
     .feat-dot {
-      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-      background: rgba(255,255,255,.5);
+      width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
+      position: relative;
     }
-    .feat-dot.success { background: #34d399; }
+    .feat-dot::after {
+      content: ''; position: absolute; left: 5px; top: 3px;
+      width: 4px; height: 8px; border: solid #fff;
+      border-width: 0 2px 2px 0; transform: rotate(45deg);
+    }
+
+    .panel-foot { margin-top: auto; padding-top: 32px; font-size: 12px; color: rgba(255,255,255,.7); letter-spacing: -0.12px; }
 
     /* Right form */
     .auth-form-wrap {
       flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       padding: 40px 24px;
-      background: var(--bg);
+      background: var(--canvas);
+      position: relative;
+    }
+    .auth-form-wrap::before {
+      content: ''; position: absolute; pointer-events: none;
+      top: -120px; left: -120px; width: 400px; height: 400px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(106,76,245,.15), transparent 60%);
+      filter: blur(80px);
     }
 
     .auth-form {
-      width: 100%;
-      max-width: 400px;
+      width: 100%; max-width: 420px;
+      position: relative; z-index: 1;
     }
+
+    .mobile-logo {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 32px;
+      font-family: var(--font-display); font-weight: 600; font-size: 17px;
+      letter-spacing: -0.4px; color: var(--text);
+    }
+    .mobile-logo .logo-dot {
+      background: conic-gradient(from 210deg, var(--g-violet), var(--g-magenta), var(--g-orange), var(--g-violet));
+      box-shadow: 0 0 20px rgba(212,77,240,.35);
+    }
+    @media (min-width: 960px) { .mobile-logo { display: none; } }
 
     .back-link {
-      display: inline-block;
-      font-size: 13px;
-      color: var(--text-muted);
-      text-decoration: none;
-      margin-bottom: 32px;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--text-muted);
+      margin-bottom: 24px;
       transition: color .15s;
     }
-    .back-link:hover { color: var(--text); text-decoration: none; }
+    .back-link:hover { color: var(--text); }
 
     h1 {
-      font-size: 1.75rem;
-      font-weight: 800;
-      letter-spacing: -.04em;
-      color: var(--text);
-      margin-bottom: 6px;
+      font-family: var(--font-display);
+      font-size: clamp(32px, 4vw, 48px); font-weight: 500;
+      letter-spacing: -0.04em; line-height: 1.02;
+      color: var(--text); margin-bottom: 10px;
     }
-    .sub { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; }
+    .sub { font-size: 16px; color: var(--text-muted); margin-bottom: 32px; letter-spacing: -0.16px; }
 
     .submit-btn {
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       font-size: 15px;
-      border-radius: var(--r-sm);
-      margin-top: 4px;
+      margin-top: 8px;
     }
 
     .divider {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 24px 0 16px;
-      color: var(--text-faint);
-      font-size: 13px;
+      display: flex; align-items: center; gap: 12px;
+      margin: 28px 0 14px;
+      color: var(--text-faint); font-size: 13px; letter-spacing: -0.13px;
     }
     .divider::before, .divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
+      content: ''; flex: 1; height: 1px; background: var(--border);
     }
 
-    .switch-btn { width: 100%; padding: 11px; font-size: 14px; }
+    .switch-btn { width: 100%; padding: 13px; font-size: 14px; }
   </style>
 
   <script>

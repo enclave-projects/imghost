@@ -14,109 +14,174 @@ const currentPlan = getPlan(currentPlanId);
 ---
 <Layout title="Dashboard">
 
-<!-- ═══ HEADER ═══════════════════════════════════════════════════════════════ -->
-<header class="header">
-  <div class="header-inner">
-    <a href="/" class="logo">
-      <div class="logo-mark">
-        <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=22" alt="" width="22" height="22" />
-      </div>
-      ImgHost
-    </a>
-    <nav class="header-nav">
-      <a href="/pricing" class={`plan-badge plan-badge-${currentPlan.id}`} title="Manage plan">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8.5 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9 8.5 12 2"/></svg>
-        <span>{currentPlan.name}</span>
+<!-- ═══ APP SHELL ═════════════════════════════════════════════════════════════ -->
+<div class="app-shell" id="app-shell">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <a href="/" class="logo">
+        <span class="logo-dot"></span>
+        <span class="logo-name">ImgHost</span>
       </a>
-      {currentPlan.id === 'free' && (
-        <a href="/pricing" class="btn btn-primary btn-sm upgrade-btn">Upgrade</a>
-      )}
-      <div class="user-chip">
-        <div class="avatar">{user.email.charAt(0).toUpperCase()}</div>
-        <span class="user-email">{user.email}</span>
-      </div>
-      <button class="btn btn-ghost logout-btn" id="logout-btn">
+      <button class="sidebar-close" id="sidebar-close" type="button" aria-label="Close menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <nav class="side-nav">
+      <span class="side-section">Workspace</span>
+      <a href="/dashboard" class="side-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Library
+      </a>
+      <a href="#" class="side-item" data-scrollto="upload-card">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload
+      </a>
+      <a href="#" class="side-item" data-scrollto="stats-row">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><polyline points="7 14 11 10 15 13 21 7"/></svg>
+        Storage
+      </a>
+
+      <span class="side-section">Account</span>
+      <a href="/profile" class="side-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        Profile &amp; billing
+      </a>
+      <a href="/pricing" class="side-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8.5 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9 8.5 12 2"/></svg>
+        Plans
+      </a>
+      <a href="/" class="side-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 12 3l9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>
+        Home
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <a href="/pricing" class={`plan-pill plan-pill-${currentPlan.id}`}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8.5 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9 8.5 12 2"/></svg>
+        <span class="plan-pill-text">
+          <span class="plan-pill-label">Current plan</span>
+          <span class="plan-pill-name">{currentPlan.name}</span>
+        </span>
+        {currentPlan.id === 'free' && <span class="plan-pill-cta">Upgrade →</span>}
+      </a>
+      <button class="btn btn-outline btn-block logout-btn" id="logout-btn" type="button">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         Sign out
       </button>
-    </nav>
-  </div>
-</header>
-
-<!-- ═══ MAIN ══════════════════════════════════════════════════════════════════ -->
-<main class="main">
-
-  <!-- Rate limit bar -->
-  <div class="quota-card" id="quota-card">
-    <div class="quota-left">
-      <img src="https://img.icons8.com/?id=qZ1FibjKOsRJ&format=png&size=36" alt="" width="36" height="36" class="quota-icon" />
-      <div>
-        <div class="quota-title">Hourly upload quota</div>
-        <div class="quota-sub" id="quota-text">Loading…</div>
-      </div>
     </div>
-    <div class="quota-right">
-      <div class="quota-track">
-        <div class="quota-fill" id="quota-fill" style="width:0%"></div>
-      </div>
-      <div class="quota-numbers" id="quota-numbers"></div>
-    </div>
-  </div>
+  </aside>
 
-  <!-- Upload zone -->
-  <section class="upload-card" id="drop-zone">
-    <div class="upload-idle" id="upload-idle">
-      <div class="upload-icon-wrap">
-        <img src="https://img.icons8.com/?id=qZ1FibjKOsRJ&format=png&size=48" alt="Upload" width="48" height="48" />
-      </div>
-      <div class="upload-text">
-        <p class="upload-title">Drop images &amp; videos here to upload</p>
-        <p class="upload-hint" id="upload-hint">Loading plan limits…</p>
-      </div>
-      <label class="btn btn-primary choose-btn" for="file-input">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Choose files
-      </label>
-      <input type="file" id="file-input" accept="image/*,video/*" multiple hidden />
-    </div>
+  <!-- Sidebar scrim (mobile) -->
+  <div class="sidebar-scrim" id="sidebar-scrim"></div>
 
-    <!-- Active upload progress (XHR real-time) -->
-    <div class="upload-active" id="upload-active" hidden>
-      <div class="upload-file-name" id="upload-file-name">Uploading…</div>
-      <div class="xhr-track">
-        <div class="xhr-fill" id="xhr-fill"></div>
-      </div>
-      <div class="xhr-meta">
-        <span id="xhr-pct">0%</span>
-        <span id="xhr-speed"></span>
-        <span id="xhr-of"></span>
-      </div>
-    </div>
+  <!-- ── Content area ─────────────────────────────────────────────────── -->
+  <div class="content-area">
 
-    <!-- Per-batch progress -->
-    <div class="batch-bar" id="batch-bar" hidden>
-      <div class="batch-steps" id="batch-steps"></div>
-    </div>
-
-    <div id="upload-error" class="alert" style="margin-top:14px;"></div>
-  </section>
-
-  <!-- Storage quota bar -->
-  <div class="quota-card" id="storage-quota-card">
-    <div class="quota-left">
-      <img src="https://img.icons8.com/?id=3843&format=png&size=36" alt="" width="36" height="36" class="quota-icon" />
-      <div>
-        <div class="quota-title">Storage quota</div>
-        <div class="quota-sub" id="storage-text">Loading…</div>
+    <!-- Top bar -->
+    <header class="top-bar">
+      <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="page-title">
+        <span class="page-eyebrow">Workspace</span>
+        <h1>Library</h1>
       </div>
-    </div>
-    <div class="quota-right">
-      <div class="quota-track">
-        <div class="quota-fill" id="storage-fill" style="width:0%"></div>
+      <div class="top-bar-right">
+        <div class="user-chip">
+          <div class="avatar">{user.email.charAt(0).toUpperCase()}</div>
+          <span class="user-email">{user.email}</span>
+        </div>
       </div>
-      <div class="quota-numbers" id="storage-numbers"></div>
-    </div>
-  </div>
+    </header>
+
+    <!-- Main scrollable -->
+    <main class="main">
+
+      <!-- ── Stats row (3 compact tiles) ─────────────────────────────── -->
+      <section class="stats-row" id="stats-row">
+
+        <!-- Storage tile -->
+        <div class="stat-tile" id="storage-quota-card">
+          <div class="stat-tile-head">
+            <div class="stat-icon stat-icon-violet">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"/></svg>
+            </div>
+            <span class="stat-label">Storage</span>
+          </div>
+          <div class="stat-value" id="storage-text">—</div>
+          <div class="quota-track">
+            <div class="quota-fill" id="storage-fill" style="width:0%"></div>
+          </div>
+          <div class="quota-numbers" id="storage-numbers"></div>
+        </div>
+
+        <!-- Hourly quota tile -->
+        <div class="stat-tile" id="quota-card">
+          <div class="stat-tile-head">
+            <div class="stat-icon stat-icon-orange">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+            </div>
+            <span class="stat-label">Hourly upload quota</span>
+          </div>
+          <div class="stat-value" id="quota-text">—</div>
+          <div class="quota-track">
+            <div class="quota-fill" id="quota-fill" style="width:0%"></div>
+          </div>
+          <div class="quota-numbers" id="quota-numbers"></div>
+        </div>
+
+        <!-- Files tile -->
+        <div class="stat-tile">
+          <div class="stat-tile-head">
+            <div class="stat-icon stat-icon-blue">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            </div>
+            <span class="stat-label">Files</span>
+          </div>
+          <div class="stat-value" id="stat-files-count">—</div>
+          <div class="stat-foot" id="stat-files-foot">across <span id="stat-folders-count">0</span> folders</div>
+        </div>
+
+      </section>
+
+      <!-- ── Upload zone ─────────────────────────────────────────────── -->
+      <section class="upload-card" id="drop-zone">
+        <div class="upload-idle" id="upload-idle">
+          <div class="upload-icon-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="upload-text">
+            <p class="upload-title">Drop files to upload</p>
+            <p class="upload-hint" id="upload-hint">Loading plan limits…</p>
+          </div>
+          <label class="btn btn-primary choose-btn" for="file-input">
+            Choose files
+          </label>
+          <input type="file" id="file-input" accept="image/*,video/*" multiple hidden />
+        </div>
+
+        <div class="upload-active" id="upload-active" hidden>
+          <div class="upload-file-name" id="upload-file-name">Uploading…</div>
+          <div class="xhr-track">
+            <div class="xhr-fill" id="xhr-fill"></div>
+          </div>
+          <div class="xhr-meta">
+            <span id="xhr-pct">0%</span>
+            <span id="xhr-speed"></span>
+            <span id="xhr-of"></span>
+          </div>
+        </div>
+
+        <div class="batch-bar" id="batch-bar" hidden>
+          <div class="batch-steps" id="batch-steps"></div>
+        </div>
+
+        <div id="upload-error" class="alert" style="margin-top:14px;"></div>
+      </section>
 
   <!-- Gallery -->
   <section class="gallery-section">
@@ -178,7 +243,9 @@ const currentPlan = getPlan(currentPlanId);
       <button class="btn btn-outline" id="load-more-btn">Load more</button>
     </div>
   </section>
-</main>
+    </main>
+  </div>
+</div>
 
 <!-- Media card template -->
 <template id="img-tpl">
@@ -279,90 +346,284 @@ const currentPlan = getPlan(currentPlanId);
 </div>
 
 <style>
-  /* ── Header ──────────────────────────────────────────────── */
-  .header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 100;
-    backdrop-filter: blur(12px);
+  /* ─── App shell ────────────────────────────────────────────── */
+  .app-shell {
+    --sidebar-w: 240px;
+    --topbar-h: 64px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    background: var(--canvas);
   }
-  .header-inner {
-    max-width: 1280px; margin: 0 auto; padding: 0 28px;
-    height: 60px; display: flex; align-items: center; justify-content: space-between;
+  @media (max-width: 900px) {
+    .app-shell { grid-template-columns: 1fr; }
+  }
+
+  /* ─── Sidebar ──────────────────────────────────────────────── */
+  .sidebar {
+    position: sticky; top: 0; height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 18px 14px 16px;
+    z-index: 60;
+  }
+  @media (max-width: 900px) {
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 280px; height: 100vh;
+      transform: translateX(-100%);
+      transition: transform .25s var(--ease);
+      box-shadow: var(--shadow-lg);
+    }
+    .app-shell.menu-open .sidebar { transform: translateX(0); }
+  }
+  .sidebar-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 8px 18px;
   }
   .logo {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--font-display); font-weight: 600; font-size: 16px;
+    letter-spacing: -0.4px; color: var(--text);
+    text-decoration: none;
+  }
+  .logo-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: conic-gradient(from 210deg, var(--g-violet), var(--g-magenta), var(--g-orange), var(--g-violet));
+    box-shadow: 0 0 20px rgba(212,77,240,.35);
+    flex-shrink: 0;
+  }
+  .sidebar-close {
+    display: none; background: transparent; border: none;
+    color: var(--text-muted); cursor: pointer; padding: 6px;
+    border-radius: 100px;
+  }
+  .sidebar-close:hover { background: var(--surface-2); color: var(--text); }
+  @media (max-width: 900px) { .sidebar-close { display: flex; } }
+
+  .side-nav {
+    flex: 1; display: flex; flex-direction: column; gap: 2px;
+    overflow-y: auto;
+  }
+  .side-section {
+    padding: 14px 12px 6px;
+    font-size: 11px; font-weight: 500; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--text-faint);
+  }
+  .side-section:first-child { padding-top: 4px; }
+  .side-item {
     display: flex; align-items: center; gap: 10px;
-    font-weight: 800; font-size: 16px; color: var(--text);
-    text-decoration: none; letter-spacing: -.02em;
+    padding: 9px 12px; border-radius: 10px;
+    font-size: 14px; font-weight: 500; letter-spacing: -0.14px;
+    color: var(--text-muted); cursor: pointer;
+    transition: background .15s, color .15s;
   }
-  .logo-mark {
-    width: 36px; height: 36px; border-radius: 10px;
-    background: var(--primary-light); display: flex; align-items: center; justify-content: center;
+  .side-item svg { flex-shrink: 0; opacity: .85; }
+  .side-item:hover { background: var(--surface-2); color: var(--text); }
+  .side-item.active {
+    background: var(--surface-2); color: var(--text);
+    box-shadow: inset 0 0 0 1px var(--border);
   }
-  .header-nav { display: flex; align-items: center; gap: 10px; }
+
+  .sidebar-foot {
+    border-top: 1px solid var(--border);
+    padding-top: 14px; margin-top: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .plan-pill {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 12px 12px 14px;
+    border-radius: 14px;
+    text-decoration: none;
+    transition: transform .15s ease;
+  }
+  .plan-pill:hover { transform: translateY(-1px); }
+  .plan-pill-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  .plan-pill-label {
+    font-size: 10px; font-weight: 500; letter-spacing: .12em;
+    text-transform: uppercase; opacity: .8;
+  }
+  .plan-pill-name {
+    font-family: var(--font-display);
+    font-size: 15px; font-weight: 500; letter-spacing: -0.02em;
+    margin-top: 2px;
+  }
+  .plan-pill-cta { font-size: 12px; font-weight: 500; letter-spacing: -0.12px; opacity: .9; }
+  .plan-pill-free   { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  .plan-pill-pro    { background: linear-gradient(135deg, var(--g-violet), var(--g-magenta)); color: #fff; box-shadow: 0 4px 18px rgba(106,76,245,.35); }
+  .plan-pill-master { background: linear-gradient(135deg, var(--g-orange), var(--g-coral)); color: #fff; box-shadow: 0 4px 18px rgba(255,122,61,.35); }
+  .btn-block { width: 100%; }
+  .logout-btn { justify-content: flex-start; }
+
+  .sidebar-scrim {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.55); backdrop-filter: blur(2px);
+    z-index: 55;
+  }
+  @media (max-width: 900px) {
+    .app-shell.menu-open .sidebar-scrim { display: block; }
+  }
+
+  /* ─── Content area ─────────────────────────────────────────── */
+  .content-area {
+    min-width: 0;   /* allow shrinking inside grid */
+    display: flex; flex-direction: column;
+  }
+
+  /* ─── Top bar ──────────────────────────────────────────────── */
+  .top-bar {
+    position: sticky; top: 0; z-index: 40;
+    height: var(--topbar-h);
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 28px;
+    background: rgba(9,9,9,.78);
+    backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid var(--border);
+  }
+  @media (max-width: 600px) { .top-bar { padding: 0 16px; } }
+  .menu-toggle {
+    display: none; background: transparent; border: none;
+    color: var(--text); cursor: pointer; padding: 8px;
+    border-radius: 100px;
+  }
+  .menu-toggle:hover { background: var(--surface); }
+  @media (max-width: 900px) { .menu-toggle { display: flex; } }
+  .page-title { display: flex; flex-direction: column; line-height: 1.1; flex: 1; min-width: 0; }
+  .page-eyebrow {
+    font-size: 11px; font-weight: 500; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--text-faint);
+  }
+  .page-title h1 {
+    font-family: var(--font-display);
+    font-size: clamp(20px, 2.4vw, 26px); font-weight: 500;
+    letter-spacing: -0.03em; color: var(--text); margin-top: 2px;
+  }
+  .top-bar-right { display: flex; align-items: center; gap: 10px; }
   .user-chip {
-    display: flex; align-items: center; gap: 8px;
-    padding: 5px 12px 5px 6px; background: var(--surface-2);
-    border: 1px solid var(--border); border-radius: var(--r-full);
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 12px 5px 5px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 100px;
   }
   .avatar {
-    width: 26px; height: 26px; border-radius: 50%;
-    background: var(--primary); color: #fff;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--g-violet), var(--g-magenta));
+    color: #fff;
     display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700; flex-shrink: 0;
+    font-size: 12px; font-weight: 600; flex-shrink: 0;
   }
-  .user-email { font-size: 13px; font-weight: 500; color: var(--text-2); display: none; }
-  @media (min-width: 520px) { .user-email { display: block; } }
-  .logout-btn { font-size: 13px; color: var(--text-muted); }
-
-  /* ── Main ────────────────────────────────────────────────── */
-  .main { max-width: 1280px; margin: 0 auto; padding: 28px; display: flex; flex-direction: column; gap: 20px; }
-
-  /* ── Quota card ──────────────────────────────────────────── */
-  .quota-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--r-lg); padding: 18px 24px;
-    display: flex; align-items: center; gap: 24px;
-    box-shadow: var(--shadow); flex-wrap: wrap; gap: 16px;
+  .user-email {
+    font-size: 13px; font-weight: 500; color: var(--text-muted);
+    letter-spacing: -0.13px;
+    max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .quota-left { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-  .quota-icon { filter: drop-shadow(0 2px 8px rgba(91,94,244,.3)); }
-  .quota-title { font-weight: 700; font-size: 14px; color: var(--text); }
-  .quota-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
-  .quota-right { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
+  @media (max-width: 600px) { .user-email { display: none; } }
+
+  /* ─── Main ─────────────────────────────────────────────────── */
+  .main {
+    max-width: 1180px; margin: 0 auto; width: 100%;
+    padding: 28px; display: flex; flex-direction: column; gap: 20px;
+  }
+  @media (max-width: 600px) { .main { padding: 20px 16px; gap: 16px; } }
+
+  /* ─── Stats row (3 compact tiles) ──────────────────────────── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 900px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 520px) { .stats-row { grid-template-columns: 1fr; } }
+
+  .stat-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 10px;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .stat-tile:hover { border-color: var(--border-strong); }
+  .stat-tile-head { display: flex; align-items: center; gap: 10px; }
+  .stat-icon {
+    width: 32px; height: 32px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; color: #fff;
+  }
+  .stat-icon-violet { background: linear-gradient(135deg, var(--g-violet), var(--g-magenta)); box-shadow: 0 4px 16px rgba(106,76,245,.3); }
+  .stat-icon-orange { background: linear-gradient(135deg, var(--g-orange), var(--g-coral));   box-shadow: 0 4px 16px rgba(255,122,61,.3); }
+  .stat-icon-blue   { background: linear-gradient(135deg, #3b82f6, #06b6d4);                  box-shadow: 0 4px 16px rgba(59,130,246,.3); }
+  .stat-label {
+    font-size: 12px; font-weight: 500;
+    color: var(--text-muted); letter-spacing: -0.12px;
+  }
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 500;
+    letter-spacing: -0.03em; color: var(--text);
+    line-height: 1.2;
+  }
+  .stat-foot { font-size: 12.5px; color: var(--text-muted); letter-spacing: -0.13px; }
+  .stat-foot span { color: var(--text); font-weight: 500; }
+
+  /* Quota track inside stat tiles */
   .quota-track {
-    height: 8px; background: var(--surface-3); border-radius: var(--r-full);
-    overflow: hidden; border: 1px solid var(--border);
+    height: 6px; background: var(--canvas);
+    border: 1px solid var(--border);
+    border-radius: 100px; overflow: hidden;
   }
   .quota-fill {
-    height: 100%; border-radius: var(--r-full);
-    background: linear-gradient(90deg, var(--primary), #a78bfa);
+    height: 100%; border-radius: 100px;
+    background: linear-gradient(90deg, var(--g-violet), var(--g-magenta));
     transition: width .5s var(--ease), background .3s;
   }
-  .quota-fill.warn { background: linear-gradient(90deg, var(--warning), #f97316); }
-  .quota-fill.danger { background: linear-gradient(90deg, var(--error), #dc2626); }
-  .quota-numbers { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  #quota-card .quota-fill { background: linear-gradient(90deg, var(--g-orange), var(--g-coral)); }
+  .quota-fill.warn { background: linear-gradient(90deg, var(--warning), #f97316) !important; }
+  .quota-fill.danger { background: linear-gradient(90deg, var(--error), #dc2626) !important; }
+  .quota-numbers {
+    display: flex; justify-content: space-between;
+    font-size: 11.5px; font-weight: 500; color: var(--text-faint);
+    letter-spacing: -0.11px;
+  }
 
-  /* ── Upload card ─────────────────────────────────────────── */
+  /* ─── Upload card ──────────────────────────────────────────── */
   .upload-card {
-    background: var(--surface); border: 2px dashed var(--border);
-    border-radius: var(--r-lg); padding: 32px 28px;
-    box-shadow: var(--shadow); transition: border-color .2s, background .2s;
+    background: var(--surface);
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 16px;
+    padding: 28px 24px;
+    transition: border-color .2s, background .2s;
   }
   .upload-card.drag-over {
-    border-color: var(--primary); background: var(--primary-light);
+    border-color: var(--accent-blue); background: var(--surface-2);
   }
   .upload-idle {
-    display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
   }
   .upload-icon-wrap {
-    width: 72px; height: 72px; background: var(--primary-light);
-    border-radius: var(--r-lg); display: flex; align-items: center; justify-content: center;
-    margin-bottom: 4px;
+    width: 48px; height: 48px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text); flex-shrink: 0;
   }
-  .upload-title { font-size: 16px; font-weight: 700; color: var(--text); }
-  .upload-hint { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
-  .choose-btn { font-size: 14px; padding: 10px 22px; margin-top: 4px; }
+  .upload-text { flex: 1; min-width: 220px; }
+  .upload-title {
+    font-family: var(--font-display);
+    font-size: 17px; font-weight: 500; letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .upload-hint {
+    font-size: 13px; color: var(--text-muted);
+    margin-top: 4px; letter-spacing: -0.13px; line-height: 1.4;
+  }
+  .choose-btn { font-size: 14px; padding: 11px 20px; flex-shrink: 0; }
+  @media (max-width: 600px) {
+    .upload-idle { justify-content: center; text-align: center; }
+    .upload-text { text-align: center; }
+    .choose-btn { width: 100%; justify-content: center; }
+  }
 
   /* XHR real-time progress */
   .upload-active { display: flex; flex-direction: column; gap: 10px; }
@@ -489,13 +750,6 @@ const currentPlan = getPlan(currentPlanId);
   .vid-modal-close { position: absolute; top: -14px; right: -14px; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-3); border: 1px solid var(--border); color: var(--text); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 2; }
   .vid-modal-close:hover { background: var(--error); color: #fff; }
   .vid-modal-meta { margin-top: 10px; font-size: 13px; color: var(--text-muted); text-align: center; }
-
-  /* ── Storage quota card ──────────────────────────────────── */
-  #storage-quota-card .quota-fill {
-    background: linear-gradient(90deg, #10b981, #34d399);
-  }
-  #storage-quota-card .quota-fill.warn { background: linear-gradient(90deg, var(--warning), #f97316); }
-  #storage-quota-card .quota-fill.danger { background: linear-gradient(90deg, var(--error), #dc2626); }
 
   /* ── Breadcrumbs ─────────────────────────────────────────── */
   .breadcrumbs { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -1474,24 +1728,52 @@ const currentPlan = getPlan(currentPlanId);
     });
   });
 
+  // ── Sidebar (mobile drawer) ───────────────────────────────────────────────
+  const appShell = document.getElementById('app-shell')!;
+  const menuToggle = document.getElementById('menu-toggle');
+  const sidebarClose = document.getElementById('sidebar-close');
+  const sidebarScrim = document.getElementById('sidebar-scrim');
+  function openSidebar()  { appShell.classList.add('menu-open'); }
+  function closeSidebar() { appShell.classList.remove('menu-open'); }
+  menuToggle?.addEventListener('click', openSidebar);
+  sidebarClose?.addEventListener('click', closeSidebar);
+  sidebarScrim?.addEventListener('click', closeSidebar);
+
+  // Smooth-scroll side nav anchors
+  document.querySelectorAll<HTMLAnchorElement>('.side-item[data-scrollto]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const id = a.getAttribute('data-scrollto');
+      if (!id) return;
+      const target = id === 'upload-card' ? document.getElementById('drop-zone')
+                   : document.getElementById(id);
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      closeSidebar();
+    });
+  });
+
+  // ── Files-count tile wiring ───────────────────────────────────────────────
+  const filesCountEl = document.getElementById('stat-files-count');
+  const foldersCountEl = document.getElementById('stat-folders-count');
+  const statFilesFoot = document.getElementById('stat-files-foot');
+  function updateFilesTile() {
+    if (filesCountEl) filesCountEl.textContent = String(images.length);
+    if (foldersCountEl) foldersCountEl.textContent = String(folders.length);
+    if (statFilesFoot && folders.length === 0) {
+      statFilesFoot.textContent = images.length === 0 ? 'Nothing uploaded yet' : 'in your library';
+    } else if (statFilesFoot) {
+      statFilesFoot.innerHTML = `across <span>${folders.length}</span> folder${folders.length === 1 ? '' : 's'}`;
+    }
+  }
+  // Refresh files tile any time storage tile updates (i.e. after every fetch)
+  if (storageText) {
+    new MutationObserver(updateFilesTile).observe(storageText, { childList: true, characterData: true, subtree: true });
+  }
+
   // ── Init ──────────────────────────────────────────────────────────────────
   loadImages();
+  updateFilesTile();
 </script>
 
-<style is:global>
-  .plan-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 12px; border-radius: 999px;
-    font-size: 12px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
-    text-decoration: none;
-    transition: transform .15s ease, box-shadow .15s ease;
-  }
-  .plan-badge:hover { transform: translateY(-1px); }
-  .plan-badge-free    { background: var(--surface-3); color: var(--text-muted); }
-  .plan-badge-pro     { background: linear-gradient(135deg, #5b5ef4, #7c3aed); color: #fff; box-shadow: 0 4px 14px rgba(124,58,237,.35); }
-  .plan-badge-master  { background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; box-shadow: 0 4px 14px rgba(239,68,68,.35); }
-  .btn-sm { padding: 7px 14px; font-size: 13px; }
-  .upgrade-btn { white-space: nowrap; }
-</style>
 
 </Layout>
