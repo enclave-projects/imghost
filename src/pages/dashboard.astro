@@ -1,7 +1,16 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { env } from 'cloudflare:workers';
+import { getUserById } from '../lib/db';
+import { getPlan } from '../lib/plans';
 export const prerender = false;
 const user = Astro.locals.user!;
+let currentPlanId = 'free';
+if (env?.DB) {
+  const dbUser = await getUserById(env.DB, user.id);
+  currentPlanId = dbUser?.plan ?? 'free';
+}
+const currentPlan = getPlan(currentPlanId);
 ---
 <Layout title="Dashboard">
 
@@ -15,6 +24,13 @@ const user = Astro.locals.user!;
       ImgHost
     </a>
     <nav class="header-nav">
+      <a href="/pricing" class={`plan-badge plan-badge-${currentPlan.id}`} title="Manage plan">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8.5 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 9 8.5 12 2"/></svg>
+        <span>{currentPlan.name}</span>
+      </a>
+      {currentPlan.id === 'free' && (
+        <a href="/pricing" class="btn btn-primary btn-sm upgrade-btn">Upgrade</a>
+      )}
       <div class="user-chip">
         <div class="avatar">{user.email.charAt(0).toUpperCase()}</div>
         <span class="user-email">{user.email}</span>
@@ -54,14 +70,14 @@ const user = Astro.locals.user!;
         <img src="https://img.icons8.com/?id=qZ1FibjKOsRJ&format=png&size=48" alt="Upload" width="48" height="48" />
       </div>
       <div class="upload-text">
-        <p class="upload-title">Drop images here to upload</p>
-        <p class="upload-hint">JPEG · PNG · WebP · GIF · AVIF · SVG · BMP &nbsp;|&nbsp; Max 10 MB each</p>
+        <p class="upload-title">Drop images &amp; videos here to upload</p>
+        <p class="upload-hint" id="upload-hint">Loading plan limits…</p>
       </div>
       <label class="btn btn-primary choose-btn" for="file-input">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Choose files
       </label>
-      <input type="file" id="file-input" accept="image/*" multiple hidden />
+      <input type="file" id="file-input" accept="image/*,video/*" multiple hidden />
     </div>
 
     <!-- Active upload progress (XHR real-time) -->
@@ -85,47 +101,113 @@ const user = Astro.locals.user!;
     <div id="upload-error" class="alert" style="margin-top:14px;"></div>
   </section>
 
+  <!-- Storage quota bar -->
+  <div class="quota-card" id="storage-quota-card">
+    <div class="quota-left">
+      <img src="https://img.icons8.com/?id=3843&format=png&size=36" alt="" width="36" height="36" class="quota-icon" />
+      <div>
+        <div class="quota-title">Storage quota</div>
+        <div class="quota-sub" id="storage-text">Loading…</div>
+      </div>
+    </div>
+    <div class="quota-right">
+      <div class="quota-track">
+        <div class="quota-fill" id="storage-fill" style="width:0%"></div>
+      </div>
+      <div class="quota-numbers" id="storage-numbers"></div>
+    </div>
+  </div>
+
   <!-- Gallery -->
   <section class="gallery-section">
+    <!-- Breadcrumbs -->
+    <nav class="breadcrumbs" id="breadcrumbs">
+      <button class="crumb" data-folder="all" type="button">All files</button>
+      <span class="crumb-sep">/</span>
+      <button class="crumb" data-folder="root" type="button">Root</button>
+    </nav>
+
     <div class="gallery-header">
       <div class="gallery-title-row">
         <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=24" alt="" width="24" height="24" />
-        <h2>Your images</h2>
+        <h2 id="gallery-heading">Your media</h2>
         <span class="img-badge" id="img-count"></span>
       </div>
       <div class="gallery-actions" id="gallery-actions" hidden>
+        <button class="btn btn-outline btn-sm" id="new-folder-btn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+          New folder
+        </button>
+        <button class="btn btn-ghost btn-sm" id="select-toggle-btn" type="button">Select</button>
         <span class="sort-label">Newest first</span>
+      </div>
+    </div>
+
+    <!-- Folders grid (only on 'all' or 'root' view) -->
+    <div id="folders-section" hidden>
+      <div class="folders-grid" id="folders-grid"></div>
+    </div>
+
+    <!-- Bulk action bar -->
+    <div class="bulk-bar" id="bulk-bar" hidden>
+      <div class="bulk-left">
+        <button class="bulk-close" id="bulk-close-btn" type="button" title="Cancel selection">✕</button>
+        <span id="bulk-count">0 selected</span>
+      </div>
+      <div class="bulk-actions">
+        <button class="btn btn-outline btn-sm" id="bulk-select-all" type="button">Select all</button>
+        <button class="btn btn-outline btn-sm" id="bulk-move-btn" type="button" disabled>Move…</button>
+        <button class="btn btn-danger btn-sm" id="bulk-delete-btn" type="button" disabled>Delete</button>
       </div>
     </div>
 
     <div id="gallery-loading" class="gallery-state">
       <div class="spinner"></div>
-      <p>Loading your images…</p>
+      <p>Loading your media…</p>
     </div>
 
     <div id="gallery-empty" class="gallery-state" hidden>
       <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=64" alt="" width="64" height="64" style="opacity:.25;filter:grayscale(1)" />
-      <p class="empty-title">No images yet</p>
-      <p class="empty-sub">Upload your first image above to get started</p>
+      <p class="empty-title">No files yet</p>
+      <p class="empty-sub">Upload your first image or video above to get started</p>
     </div>
 
     <div id="gallery" class="gallery" hidden></div>
 
     <div id="load-more-wrap" hidden style="text-align:center;margin-top:28px;">
-      <button class="btn btn-outline" id="load-more-btn">Load more images</button>
+      <button class="btn btn-outline" id="load-more-btn">Load more</button>
     </div>
   </section>
 </main>
 
-<!-- Image card template -->
+<!-- Media card template -->
 <template id="img-tpl">
   <div class="img-card">
     <div class="img-thumb">
       <img loading="lazy" decoding="async" />
+      <!-- Video placeholder (shown for videos instead of img) -->
+      <div class="vid-thumb" hidden>
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="4" fill="#1e1b4b"/>
+          <path d="M18 14L34 24L18 34V14Z" fill="#a78bfa"/>
+        </svg>
+      </div>
+      <div class="vid-play-overlay" hidden>
+        <div class="vid-play-btn">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+      </div>
+      <label class="select-check" title="Select">
+        <input type="checkbox" class="select-input" />
+        <span class="select-box"></span>
+      </label>
       <div class="img-actions">
-        <button class="action-btn copy-btn" title="Copy URL">
+        <button class="action-btn copy-btn" title="Copy embed code">
           <img src="https://img.icons8.com/?id=s30bO0DNz4I5&format=png&size=18" alt="Copy" width="18" height="18" />
-          <span class="action-label">Copy URL</span>
+          <span class="action-label">Copy embed</span>
+        </button>
+        <button class="action-btn move-btn" title="Move to folder">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
         </button>
         <button class="action-btn delete-btn" title="Delete">
           <img src="https://img.icons8.com/?id=BJkQWseLWhe4&format=png&size=18" alt="Delete" width="18" height="18" />
@@ -143,6 +225,58 @@ const user = Astro.locals.user!;
     </div>
   </div>
 </template>
+
+<!-- Generic modal: New folder -->
+<div id="new-folder-modal" class="app-modal" hidden>
+  <div class="app-modal-backdrop" data-close></div>
+  <div class="app-modal-box">
+    <h3>New folder</h3>
+    <p class="app-modal-sub">Create a folder to organize your media.</p>
+    <input id="new-folder-input" type="text" maxlength="60" placeholder="e.g. Vacation 2025" class="app-input" />
+    <div id="new-folder-error" class="app-modal-error" hidden></div>
+    <div class="app-modal-actions">
+      <button class="btn btn-ghost btn-sm" data-close type="button">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="new-folder-confirm" type="button">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Move-to-folder modal -->
+<div id="move-modal" class="app-modal" hidden>
+  <div class="app-modal-backdrop" data-close></div>
+  <div class="app-modal-box">
+    <h3 id="move-modal-title">Move</h3>
+    <p class="app-modal-sub">Choose a destination folder.</p>
+    <div id="move-folder-list" class="folder-picker"></div>
+    <div class="app-modal-actions">
+      <button class="btn btn-ghost btn-sm" data-close type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Folder delete confirm -->
+<div id="folder-delete-modal" class="app-modal" hidden>
+  <div class="app-modal-backdrop" data-close></div>
+  <div class="app-modal-box">
+    <h3>Delete folder</h3>
+    <p class="app-modal-sub" id="folder-delete-sub">What should happen to the files inside?</p>
+    <div class="app-modal-actions" style="flex-wrap:wrap;gap:8px;">
+      <button class="btn btn-ghost btn-sm" data-close type="button">Cancel</button>
+      <button class="btn btn-outline btn-sm" id="folder-delete-move" type="button">Move files to root</button>
+      <button class="btn btn-danger btn-sm" id="folder-delete-purge" type="button">Delete files too</button>
+    </div>
+  </div>
+</div>
+
+<!-- Video modal -->
+<div id="video-modal" class="vid-modal" hidden>
+  <div class="vid-modal-backdrop"></div>
+  <div class="vid-modal-box">
+    <button class="vid-modal-close" id="vid-close">✕</button>
+    <video id="vid-player" controls playsinline style="width:100%;max-height:80vh;border-radius:8px;background:#000;"></video>
+    <div class="vid-modal-meta" id="vid-modal-meta"></div>
+  </div>
+</div>
 
 <style>
   /* ── Header ──────────────────────────────────────────────── */
@@ -300,6 +434,18 @@ const user = Astro.locals.user!;
   .img-thumb { position: relative; aspect-ratio: 1; background: var(--surface-3); overflow: hidden; }
   .img-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s; }
   .img-card:hover .img-thumb img { transform: scale(1.04); }
+  .vid-thumb { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg,#1e1b4b,#312e81); }
+  .vid-thumb svg { width: 80%; height: 80%; opacity: .8; }
+  .vid-play-overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.25); opacity: 0; transition: opacity .2s;
+  }
+  .img-card:hover .vid-play-overlay { opacity: 1; }
+  .vid-play-btn {
+    width: 48px; height: 48px; border-radius: 50%; background: rgba(167,139,250,.9);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  }
 
   .img-actions {
     position: absolute; inset: 0;
@@ -335,6 +481,149 @@ const user = Astro.locals.user!;
   .img-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
   .img-meta-row { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
   .img-size, .img-date, .img-dot { font-size: 11.5px; color: var(--text-faint); }
+
+  /* ── Video modal ─────────────────────────────────────────── */
+  .vid-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .vid-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(6px); }
+  .vid-modal-box { position: relative; z-index: 1; width: 100%; max-width: 900px; background: var(--surface); border-radius: var(--r-lg); padding: 16px; box-shadow: 0 24px 64px rgba(0,0,0,.5); }
+  .vid-modal-close { position: absolute; top: -14px; right: -14px; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-3); border: 1px solid var(--border); color: var(--text); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 2; }
+  .vid-modal-close:hover { background: var(--error); color: #fff; }
+  .vid-modal-meta { margin-top: 10px; font-size: 13px; color: var(--text-muted); text-align: center; }
+
+  /* ── Storage quota card ──────────────────────────────────── */
+  #storage-quota-card .quota-fill {
+    background: linear-gradient(90deg, #10b981, #34d399);
+  }
+  #storage-quota-card .quota-fill.warn { background: linear-gradient(90deg, var(--warning), #f97316); }
+  #storage-quota-card .quota-fill.danger { background: linear-gradient(90deg, var(--error), #dc2626); }
+
+  /* ── Breadcrumbs ─────────────────────────────────────────── */
+  .breadcrumbs { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .crumb {
+    background: none; border: none; padding: 4px 10px; border-radius: var(--r-sm);
+    font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .crumb:hover { background: var(--surface-3); color: var(--text); }
+  .crumb.active { background: var(--primary-light); color: var(--primary); }
+  .crumb-sep { color: var(--text-faint); font-size: 13px; }
+
+  .gallery-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Folders grid ────────────────────────────────────────── */
+  .folders-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px; margin-bottom: 18px;
+  }
+  .folder-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 14px; box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer; transition: box-shadow .2s, transform .2s, border-color .2s;
+    position: relative;
+  }
+  .folder-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: var(--primary); }
+  .folder-icon {
+    width: 40px; height: 40px; border-radius: var(--r-sm);
+    background: var(--primary-light); color: var(--primary);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .folder-info { flex: 1; min-width: 0; }
+  .folder-name { font-weight: 700; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .folder-count { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .folder-menu {
+    background: none; border: none; color: var(--text-muted); cursor: pointer;
+    padding: 4px; border-radius: var(--r-xs); opacity: 0; transition: opacity .15s, background .15s;
+  }
+  .folder-card:hover .folder-menu { opacity: 1; }
+  .folder-menu:hover { background: var(--surface-3); color: var(--text); }
+  .folder-menu-pop {
+    position: absolute; top: 44px; right: 10px; z-index: 5;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm);
+    box-shadow: var(--shadow-md); padding: 4px; min-width: 130px;
+  }
+  .folder-menu-pop button {
+    display: block; width: 100%; text-align: left; padding: 7px 10px;
+    background: none; border: none; cursor: pointer;
+    font-size: 13px; color: var(--text); border-radius: var(--r-xs);
+  }
+  .folder-menu-pop button:hover { background: var(--surface-3); }
+  .folder-menu-pop button.danger { color: var(--error); }
+
+  /* ── Bulk bar ────────────────────────────────────────────── */
+  .bulk-bar {
+    position: sticky; top: 70px; z-index: 50;
+    background: var(--surface); border: 1px solid var(--primary);
+    border-radius: var(--r); padding: 10px 14px; margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    box-shadow: var(--shadow-md); flex-wrap: wrap;
+  }
+  .bulk-left { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; color: var(--text); }
+  .bulk-close {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--surface-3); border: 1px solid var(--border);
+    color: var(--text); cursor: pointer; font-size: 13px;
+  }
+  .bulk-close:hover { background: var(--error); color: #fff; }
+  .bulk-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn-danger { background: var(--error); color: #fff; border: 1px solid var(--error); }
+  .btn-danger:hover:not(:disabled) { background: #dc2626; }
+  .btn-danger:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── Selection checkbox on cards ─────────────────────────── */
+  .select-check {
+    position: absolute; top: 8px; left: 8px; z-index: 3;
+    cursor: pointer; opacity: 0; transition: opacity .15s;
+  }
+  .img-card:hover .select-check, .select-mode .select-check, .img-card.selected .select-check { opacity: 1; }
+  .select-input { position: absolute; opacity: 0; pointer-events: none; }
+  .select-box {
+    display: block; width: 22px; height: 22px; border-radius: 6px;
+    background: rgba(255,255,255,.85); border: 2px solid rgba(0,0,0,.25);
+    backdrop-filter: blur(4px); transition: background .15s, border-color .15s;
+  }
+  .select-input:checked + .select-box {
+    background: var(--primary); border-color: var(--primary);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>");
+    background-size: 14px; background-position: center; background-repeat: no-repeat;
+  }
+  .img-card.selected { outline: 2px solid var(--primary); outline-offset: -2px; }
+  /* In select-mode, clicks anywhere on the card toggle selection (handled in JS), hide hover actions */
+  .select-mode .img-actions { display: none; }
+
+  /* ── App modals ──────────────────────────────────────────── */
+  .app-modal { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .app-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); cursor: pointer; }
+  .app-modal-box {
+    position: relative; z-index: 1; width: 100%; max-width: 440px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: 22px; box-shadow: 0 24px 64px rgba(0,0,0,.5);
+  }
+  .app-modal-box h3 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; margin-bottom: 4px; }
+  .app-modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
+  .app-input {
+    width: 100%; padding: 10px 12px; border-radius: var(--r-sm);
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+    font-size: 14px; font-family: inherit;
+  }
+  .app-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+  .app-modal-error { color: var(--error); font-size: 13px; margin-top: 8px; font-weight: 500; }
+  .app-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+  .folder-picker { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+  .folder-picker-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border-radius: var(--r-sm); cursor: pointer; background: none; border: 1px solid transparent;
+    text-align: left; font-size: 14px; color: var(--text); width: 100%;
+  }
+  .folder-picker-item:hover { background: var(--surface-3); border-color: var(--border); }
+  .folder-picker-item.disabled { opacity: .4; cursor: not-allowed; }
+  .folder-picker-item .fp-icon {
+    width: 28px; height: 28px; border-radius: var(--r-xs);
+    background: var(--primary-light); color: var(--primary);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .folder-picker-item .fp-count { margin-left: auto; font-size: 12px; color: var(--text-muted); }
 </style>
 
 <script>
@@ -344,25 +633,52 @@ const user = Astro.locals.user!;
     filename: string;
     size: number;
     contentType: string;
+    mediaType: 'image' | 'video';
     url: string;
     createdAt: string;
+    folderId?: number | null;
+  }
+  interface FolderItem { id: number; name: string; count: number; createdAt: string; }
+  interface PlanInfo {
+    id: string;
+    name: string;
+    maxImageBytes: number;
+    maxVideoBytes: number;
   }
   interface ImagesResponse {
     ok: boolean;
     images: ImageItem[];
+    folders?: FolderItem[];
+    plan?: PlanInfo;
     uploadsUsed: number;
     uploadsLimit: number;
+    uploadsWindowMinutes?: number;
+    storageUsed: number;
+    storageLimit: number;
     error?: string;
   }
+  type FolderView = 'all' | 'root' | number;
 
   // ── State ─────────────────────────────────────────────────────────────────
   let images: ImageItem[] = [];
   let offset = 0;
   const LIMIT = 50;
-  const MAX_SIZE = 10 * 1024 * 1024;
-  const ALLOWED = new Set(['image/jpeg','image/png','image/gif','image/webp','image/avif','image/svg+xml','image/bmp']);
+  const ALLOWED_IMAGES = new Set(['image/jpeg','image/png','image/gif','image/webp','image/avif','image/svg+xml','image/bmp']);
+  const ALLOWED_VIDEOS = new Set(['video/mp4','video/webm','video/quicktime','video/x-msvideo','video/x-matroska','video/ogg']);
   let uploadsUsed = 0;
   let uploadsLimit = 10;
+  let uploadsWindowMinutes = 60;
+  let storageUsed = 0;
+  let storageLimit = 500 * 1024 * 1024;
+  let maxImageSize = 10 * 1024 * 1024;
+  let maxVideoSize = 100 * 1024 * 1024;
+  let planName = 'Free';
+
+  // Folder + selection state
+  let folders: FolderItem[] = [];
+  let currentView: FolderView = 'all';
+  let selectMode = false;
+  const selected = new Set<number>();
 
   // ── Elements ──────────────────────────────────────────────────────────────
   const gallery      = document.getElementById('gallery')!;
@@ -388,18 +704,43 @@ const user = Astro.locals.user!;
   const quotaNumbers = document.getElementById('quota-numbers')!;
   const galleryActions = document.getElementById('gallery-actions')!;
   const tpl          = document.getElementById('img-tpl') as HTMLTemplateElement;
+  const storageFill  = document.getElementById('storage-fill') as HTMLElement;
+  const storageText  = document.getElementById('storage-text')!;
+  const storageNumbers = document.getElementById('storage-numbers')!;
+  const videoModal   = document.getElementById('video-modal')!;
+  const vidPlayer    = document.getElementById('vid-player') as HTMLVideoElement;
+  const vidClose     = document.getElementById('vid-close')!;
+  const vidModalMeta = document.getElementById('vid-modal-meta')!;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function fmt(b: number) {
     if (b < 1024) return `${b} B`;
     if (b < 1048576) return `${(b/1024).toFixed(1)} KB`;
-    return `${(b/1048576).toFixed(1)} MB`;
+    if (b < 1073741824) return `${(b/1048576).toFixed(1)} MB`;
+    return `${(b/1073741824).toFixed(2)} GB`;
+  }
+  // Large-size formatter: used for plan limits (whole units, no decimals when clean)
+  function fmtLimit(b: number) {
+    const GB = 1073741824, MB = 1048576;
+    if (b >= GB) {
+      const v = b / GB;
+      return `${v % 1 === 0 ? v.toFixed(0) : v.toFixed(2)} GB`;
+    }
+    return `${Math.round(b / MB)} MB`;
+  }
+  function fmtWindow(m: number) {
+    return m === 60 ? '1 hr' : `${m} min`;
   }
   function fmtDate(iso: string) {
     return new Date(iso + (iso.endsWith('Z') ? '' : 'Z')).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   }
   function extOf(ct: string) {
-    const map: Record<string,string> = { 'image/jpeg':'jpg','image/png':'png','image/gif':'gif','image/webp':'webp','image/avif':'avif','image/svg+xml':'svg','image/bmp':'bmp' };
+    const map: Record<string,string> = {
+      'image/jpeg':'jpg','image/png':'png','image/gif':'gif','image/webp':'webp',
+      'image/avif':'avif','image/svg+xml':'svg','image/bmp':'bmp',
+      'video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov',
+      'video/x-msvideo':'avi','video/x-matroska':'mkv','video/ogg':'ogv',
+    };
     return map[ct] ?? ct.split('/')[1] ?? '?';
   }
   function showErr(msg: string) {
@@ -408,46 +749,140 @@ const user = Astro.locals.user!;
     setTimeout(() => { uploadError.className = 'alert'; }, 8000);
   }
 
-  // ── Quota bar ─────────────────────────────────────────────────────────────
+  // ── Quota bars ────────────────────────────────────────────────────────────
   function updateQuota() {
     const pct = uploadsLimit > 0 ? Math.min((uploadsUsed / uploadsLimit) * 100, 100) : 0;
     quotaFill.style.width = `${pct}%`;
     quotaFill.className = 'quota-fill' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warn' : '');
     const remaining = Math.max(uploadsLimit - uploadsUsed, 0);
+    const windowLabel = fmtWindow(uploadsWindowMinutes);
     quotaText.textContent = remaining === 0
-      ? 'Limit reached — resets in < 1 hour'
-      : `${remaining} upload${remaining !== 1 ? 's' : ''} remaining this hour`;
-    quotaNumbers.innerHTML = `<span>${uploadsUsed} used</span><span>${uploadsLimit} / hr limit</span>`;
+      ? `Limit reached — resets within ${windowLabel}`
+      : `${remaining} upload${remaining !== 1 ? 's' : ''} remaining in the current ${windowLabel} window`;
+    quotaNumbers.innerHTML = `<span>${uploadsUsed} used</span><span>${uploadsLimit} / ${uploadsWindowMinutes === 60 ? '1hr' : uploadsWindowMinutes + 'min'} limit</span>`;
   }
+
+  function updateStorageBar() {
+    const pct = storageLimit > 0 ? Math.min((storageUsed / storageLimit) * 100, 100) : 0;
+    storageFill.style.width = `${pct}%`;
+    storageFill.className = 'quota-fill' + (pct >= 100 ? ' danger' : pct >= 80 ? ' warn' : '');
+    const usedMB = (storageUsed / 1048576).toFixed(1);
+    const limitMB = (storageLimit / 1048576).toFixed(0);
+    const freeMB = Math.max((storageLimit - storageUsed) / 1048576, 0).toFixed(1);
+    const freeLabel  = fmtLimit(Math.max(storageLimit - storageUsed, 0));
+    const usedLabel  = fmt(storageUsed);
+    const limitLabel = fmtLimit(storageLimit);
+    storageText.textContent = pct >= 80
+      ? (pct >= 100 ? 'Storage full — delete files to upload more' : `Storage almost full — ${freeLabel} remaining`)
+      : `${freeLabel} free`;
+    storageNumbers.innerHTML = `<span>${usedLabel} used</span><span>${limitLabel} total</span>`;
+    void usedMB; void limitMB; void freeMB;
+  }
+
+  function updateUploadHint() {
+    const el = document.getElementById('upload-hint');
+    if (!el) return;
+    el.innerHTML = `Images: JPEG · PNG · WebP · GIF · AVIF · SVG · BMP (max ${fmtLimit(maxImageSize)}) &nbsp;|&nbsp; Videos: MP4 · WebM · MOV · AVI · MKV (max ${fmtLimit(maxVideoSize)})`;
+  }
+
+  // ── Video modal ───────────────────────────────────────────────────────────
+  function openVideo(url: string, filename: string, size: number) {
+    vidPlayer.src = url;
+    vidModalMeta.textContent = `${filename} · ${fmt(size)}`;
+    videoModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    vidPlayer.play().catch(() => {});
+  }
+  function closeVideo() {
+    vidPlayer.pause();
+    vidPlayer.src = '';
+    videoModal.hidden = true;
+    document.body.style.overflow = '';
+  }
+  vidClose.addEventListener('click', closeVideo);
+  videoModal.querySelector('.vid-modal-backdrop')!.addEventListener('click', closeVideo);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !videoModal.hidden) closeVideo(); });
 
   // ── Gallery ───────────────────────────────────────────────────────────────
   function makeCard(img: ImageItem): HTMLElement {
     const node = tpl.content.cloneNode(true) as DocumentFragment;
     const card = node.querySelector('.img-card') as HTMLElement;
     card.dataset.id = String(img.id);
+    card.dataset.mediaType = img.mediaType ?? 'image';
+
+    const isVideo = img.mediaType === 'video';
 
     const imgEl = card.querySelector('img') as HTMLImageElement;
-    imgEl.src = img.url;
-    imgEl.alt = img.filename;
+    const vidThumb = card.querySelector('.vid-thumb') as HTMLElement;
+    const vidOverlay = card.querySelector('.vid-play-overlay') as HTMLElement;
+    const thumb = card.querySelector('.img-thumb') as HTMLElement;
+
+    if (isVideo) {
+      imgEl.hidden = true;
+      vidThumb.hidden = false;
+      vidOverlay.hidden = false;
+    } else {
+      imgEl.src = img.url;
+      imgEl.alt = img.filename;
+    }
+
+    // Selection support
+    const selectInput = card.querySelector('.select-input') as HTMLInputElement;
+    const selectCheck = card.querySelector('.select-check') as HTMLLabelElement;
+    selectInput.checked = selected.has(img.id);
+    if (selectInput.checked) card.classList.add('selected');
+    selectCheck.addEventListener('click', (e) => e.stopPropagation());
+    selectInput.addEventListener('change', () => {
+      if (selectInput.checked) { selected.add(img.id); card.classList.add('selected'); }
+      else { selected.delete(img.id); card.classList.remove('selected'); }
+      updateBulkBar();
+    });
+
+    // Card click: in select mode toggles, otherwise opens video for videos
+    thumb.addEventListener('click', (e) => {
+      // ignore clicks on action buttons / checkbox
+      const t = e.target as HTMLElement;
+      if (t.closest('.action-btn') || t.closest('.select-check')) return;
+      if (selectMode) {
+        selectInput.checked = !selectInput.checked;
+        selectInput.dispatchEvent(new Event('change'));
+        return;
+      }
+      if (isVideo) openVideo(img.url, img.filename, img.size);
+    });
+    if (isVideo) card.style.cursor = 'pointer';
 
     (card.querySelector('.img-name') as HTMLElement).textContent = img.filename;
     (card.querySelector('.img-size') as HTMLElement).textContent = fmt(img.size);
     (card.querySelector('.img-date') as HTMLElement).textContent = fmtDate(img.createdAt);
-    (card.querySelector('.img-type-badge') as HTMLElement).textContent = extOf(img.contentType);
+    const badge = card.querySelector('.img-type-badge') as HTMLElement;
+    badge.textContent = extOf(img.contentType);
+    if (isVideo) badge.style.background = 'rgba(91,33,182,.75)';
 
     const copyBtn = card.querySelector('.copy-btn') as HTMLButtonElement;
     const copyLabel = copyBtn.querySelector('.action-label')!;
-    copyBtn.addEventListener('click', async () => {
+    copyBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const embedCode = isVideo
+        ? `<video src="${img.url}" controls style="max-width:100%"></video>`
+        : `<img src="${img.url}" alt="${img.filename}" />`;
       try {
-        await navigator.clipboard.writeText(img.url);
+        await navigator.clipboard.writeText(embedCode);
         copyLabel.textContent = 'Copied!';
         copyBtn.classList.add('copied');
-        setTimeout(() => { copyLabel.textContent = 'Copy URL'; copyBtn.classList.remove('copied'); }, 2000);
-      } catch { prompt('Copy this URL:', img.url); }
+        setTimeout(() => { copyLabel.textContent = 'Copy embed'; copyBtn.classList.remove('copied'); }, 2000);
+      } catch { prompt('Copy embed code:', embedCode); }
+    });
+
+    const moveBtn = card.querySelector('.move-btn') as HTMLButtonElement;
+    moveBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openMoveModal([img.id], img.folderId ?? null);
     });
 
     const delBtn = card.querySelector('.delete-btn') as HTMLButtonElement;
-    delBtn.addEventListener('click', async () => {
+    delBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
       if (!confirm(`Delete "${img.filename}"?\nThis cannot be undone.`)) return;
       delBtn.disabled = true;
       card.style.opacity = '.5';
@@ -457,7 +892,8 @@ const user = Astro.locals.user!;
         if (json.ok) {
           card.remove();
           images = images.filter(i => i.id !== img.id);
-          uploadsUsed = Math.max(uploadsUsed - 0, uploadsUsed); // keep quota same (deletion doesn't restore quota)
+          storageUsed = Math.max(storageUsed - img.size, 0);
+          updateStorageBar();
           updateCount();
           if (images.length === 0) { gallery.hidden = true; galleryEmpty.hidden = false; galleryActions.hidden = true; }
         } else { alert(json.error ?? 'Delete failed'); card.style.opacity = '1'; }
@@ -472,10 +908,22 @@ const user = Astro.locals.user!;
   }
 
   // ── Load images ───────────────────────────────────────────────────────────
+  function folderQuery(): string {
+    if (currentView === 'all') return 'all';
+    if (currentView === 'root') return 'root';
+    return String(currentView);
+  }
+
   async function loadImages(append = false) {
-    if (!append) { galleryLoad.hidden = false; gallery.hidden = true; galleryEmpty.hidden = true; }
+    if (!append) {
+      galleryLoad.hidden = false; gallery.hidden = true; galleryEmpty.hidden = true;
+      offset = 0;
+      // Clear selection when switching views (kept across pagination only)
+      selected.clear();
+      updateBulkBar();
+    }
     try {
-      const res = await fetch(`/api/images?limit=${LIMIT}&offset=${offset}`);
+      const res = await fetch(`/api/images?limit=${LIMIT}&offset=${offset}&folder_id=${encodeURIComponent(folderQuery())}`);
       if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json() as ImagesResponse;
       if (!data.ok) throw new Error(data.error ?? 'Failed to load');
@@ -483,7 +931,20 @@ const user = Astro.locals.user!;
       if (!append) {
         uploadsUsed = data.uploadsUsed ?? 0;
         uploadsLimit = data.uploadsLimit ?? 10;
+        uploadsWindowMinutes = data.uploadsWindowMinutes ?? 60;
+        storageUsed = data.storageUsed ?? 0;
+        storageLimit = data.storageLimit ?? 500 * 1024 * 1024;
+        if (data.plan) {
+          maxImageSize = data.plan.maxImageBytes ?? maxImageSize;
+          maxVideoSize = data.plan.maxVideoBytes ?? maxVideoSize;
+          planName     = data.plan.name ?? planName;
+        }
+        updateUploadHint();
         updateQuota();
+        updateStorageBar();
+        folders = data.folders ?? [];
+        renderFolders();
+        renderBreadcrumbs();
       }
 
       const newImgs = data.images ?? [];
@@ -513,6 +974,8 @@ const user = Astro.locals.user!;
       const xhr = new XMLHttpRequest();
       const fd = new FormData();
       fd.append('file', file);
+      // Upload into current folder when viewing a specific folder
+      if (typeof currentView === 'number') fd.append('folder_id', String(currentView));
       let startTime = Date.now();
 
       xhr.upload.addEventListener('progress', (e) => {
@@ -542,9 +1005,12 @@ const user = Astro.locals.user!;
   async function uploadFiles(files: File[]) {
     uploadError.className = 'alert';
     const valid = files.filter(f => {
-      if (!ALLOWED.has(f.type)) { showErr(`"${f.name}" is not a supported image type.`); return false; }
-      if (f.size > MAX_SIZE) { showErr(`"${f.name}" exceeds the 10 MB limit (${fmt(f.size)}).`); return false; }
+      const isImg = ALLOWED_IMAGES.has(f.type);
+      const isVid = ALLOWED_VIDEOS.has(f.type);
+      if (!isImg && !isVid) { showErr(`"${f.name}" is not a supported image or video type.`); return false; }
       if (f.size === 0) { showErr(`"${f.name}" is empty.`); return false; }
+      if (isImg && f.size > maxImageSize) { showErr(`"${f.name}" exceeds the ${fmtLimit(maxImageSize)} image limit on the ${planName} plan (${fmt(f.size)}).`); return false; }
+      if (isVid && f.size > maxVideoSize) { showErr(`"${f.name}" exceeds the ${fmtLimit(maxVideoSize)} video limit on the ${planName} plan (${fmt(f.size)}).`); return false; }
       return true;
     });
     if (valid.length === 0) return;
@@ -577,8 +1043,10 @@ const user = Astro.locals.user!;
           galleryActions.hidden = false;
           offset++;
           uploadsUsed++;
+          storageUsed += json.image.size;
           updateCount();
           updateQuota();
+          updateStorageBar();
           steps[i].className = 'batch-step done';
           successCount++;
         } else {
@@ -614,7 +1082,7 @@ const user = Astro.locals.user!;
   dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
-    const files = Array.from(e.dataTransfer?.files ?? []).filter(f => f.type.startsWith('image/'));
+    const files = Array.from(e.dataTransfer?.files ?? []).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
     if (files.length > 0) uploadFiles(files);
   });
 
@@ -625,8 +1093,405 @@ const user = Astro.locals.user!;
     window.location.href = '/';
   });
 
+  // ── Folders, breadcrumbs, selection & bulk ────────────────────────────────
+  const breadcrumbsEl = document.getElementById('breadcrumbs')!;
+  const galleryHeading = document.getElementById('gallery-heading')!;
+  const foldersSection = document.getElementById('folders-section')!;
+  const foldersGrid    = document.getElementById('folders-grid')!;
+  const newFolderBtn   = document.getElementById('new-folder-btn') as HTMLButtonElement;
+  const selectToggleBtn = document.getElementById('select-toggle-btn') as HTMLButtonElement;
+  const bulkBar        = document.getElementById('bulk-bar')!;
+  const bulkCountEl    = document.getElementById('bulk-count')!;
+  const bulkCloseBtn   = document.getElementById('bulk-close-btn') as HTMLButtonElement;
+  const bulkSelectAll  = document.getElementById('bulk-select-all') as HTMLButtonElement;
+  const bulkMoveBtn    = document.getElementById('bulk-move-btn') as HTMLButtonElement;
+  const bulkDeleteBtn  = document.getElementById('bulk-delete-btn') as HTMLButtonElement;
+  const newFolderModal = document.getElementById('new-folder-modal')!;
+  const newFolderInput = document.getElementById('new-folder-input') as HTMLInputElement;
+  const newFolderError = document.getElementById('new-folder-error')!;
+  const newFolderConfirm = document.getElementById('new-folder-confirm') as HTMLButtonElement;
+  const moveModal      = document.getElementById('move-modal')!;
+  const moveModalTitle = document.getElementById('move-modal-title')!;
+  const moveFolderList = document.getElementById('move-folder-list')!;
+  const folderDelModal = document.getElementById('folder-delete-modal')!;
+  const folderDelSub   = document.getElementById('folder-delete-sub')!;
+  const folderDelMove  = document.getElementById('folder-delete-move') as HTMLButtonElement;
+  const folderDelPurge = document.getElementById('folder-delete-purge') as HTMLButtonElement;
+
+  function renderBreadcrumbs() {
+    breadcrumbsEl.innerHTML = '';
+    const mk = (label: string, view: FolderView, active: boolean) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'crumb' + (active ? ' active' : '');
+      b.textContent = label;
+      b.addEventListener('click', () => navigateTo(view));
+      return b;
+    };
+    breadcrumbsEl.appendChild(mk('All files', 'all', currentView === 'all'));
+    breadcrumbsEl.append(Object.assign(document.createElement('span'), { className: 'crumb-sep', textContent: '/' }));
+    breadcrumbsEl.appendChild(mk('Root', 'root', currentView === 'root'));
+    if (typeof currentView === 'number') {
+      const f = folders.find((x) => x.id === currentView);
+      breadcrumbsEl.append(Object.assign(document.createElement('span'), { className: 'crumb-sep', textContent: '/' }));
+      breadcrumbsEl.appendChild(mk(f?.name ?? 'Folder', currentView, true));
+    }
+    galleryHeading.textContent = typeof currentView === 'number'
+      ? (folders.find((x) => x.id === currentView)?.name ?? 'Folder')
+      : (currentView === 'root' ? 'Root files' : 'Your media');
+  }
+
+  function renderFolders() {
+    foldersGrid.innerHTML = '';
+    // Show folder grid only on the "All files" view (top-level browsing)
+    if (currentView !== 'all' || folders.length === 0) {
+      foldersSection.hidden = true;
+      return;
+    }
+    foldersSection.hidden = false;
+    for (const f of folders) {
+      const card = document.createElement('div');
+      card.className = 'folder-card';
+      card.innerHTML = `
+        <div class="folder-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </div>
+        <div class="folder-info">
+          <div class="folder-name"></div>
+          <div class="folder-count"></div>
+        </div>
+        <button class="folder-menu" type="button" title="Folder options">⋯</button>
+      `;
+      (card.querySelector('.folder-name') as HTMLElement).textContent = f.name;
+      (card.querySelector('.folder-count') as HTMLElement).textContent =
+        `${f.count} item${f.count === 1 ? '' : 's'}`;
+      card.addEventListener('click', (e) => {
+        const t = e.target as HTMLElement;
+        if (t.closest('.folder-menu') || t.closest('.folder-menu-pop')) return;
+        navigateTo(f.id);
+      });
+      const menuBtn = card.querySelector('.folder-menu') as HTMLButtonElement;
+      menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Close any open menu
+        document.querySelectorAll('.folder-menu-pop').forEach((el) => el.remove());
+        const pop = document.createElement('div');
+        pop.className = 'folder-menu-pop';
+        pop.innerHTML = `
+          <button data-act="rename">Rename</button>
+          <button data-act="delete" class="danger">Delete</button>
+        `;
+        card.appendChild(pop);
+        pop.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          const act = (ev.target as HTMLElement).getAttribute('data-act');
+          pop.remove();
+          if (act === 'rename') promptRenameFolder(f);
+          else if (act === 'delete') openFolderDeleteModal(f);
+        });
+        const onDocClick = () => { pop.remove(); document.removeEventListener('click', onDocClick); };
+        setTimeout(() => document.addEventListener('click', onDocClick), 0);
+      });
+      foldersGrid.appendChild(card);
+    }
+  }
+
+  function navigateTo(view: FolderView) {
+    currentView = view;
+    setSelectMode(false);
+    loadImages(false);
+  }
+
+  // ── Selection mode + bulk bar ────────────────────────────────────────────
+  function setSelectMode(on: boolean) {
+    selectMode = on;
+    document.body.classList.toggle('select-mode', on);
+    selectToggleBtn.textContent = on ? 'Done' : 'Select';
+    if (!on) {
+      selected.clear();
+      gallery.querySelectorAll('.img-card.selected').forEach((c) => c.classList.remove('selected'));
+      gallery.querySelectorAll<HTMLInputElement>('.select-input').forEach((i) => (i.checked = false));
+    }
+    updateBulkBar();
+  }
+
+  function updateBulkBar() {
+    const count = selected.size;
+    if (count === 0 && !selectMode) { bulkBar.hidden = true; return; }
+    bulkBar.hidden = false;
+    bulkCountEl.textContent = `${count} selected`;
+    bulkMoveBtn.disabled = count === 0;
+    bulkDeleteBtn.disabled = count === 0;
+  }
+
+  bulkCloseBtn.addEventListener('click', () => setSelectMode(false));
+  selectToggleBtn.addEventListener('click', () => setSelectMode(!selectMode));
+  bulkSelectAll.addEventListener('click', () => {
+    const allInputs = gallery.querySelectorAll<HTMLInputElement>('.select-input');
+    const allSelected = images.length > 0 && images.every((i) => selected.has(i.id));
+    allInputs.forEach((inp) => {
+      const id = parseInt((inp.closest('.img-card') as HTMLElement).dataset.id ?? '0', 10);
+      if (allSelected) { inp.checked = false; selected.delete(id); inp.closest('.img-card')!.classList.remove('selected'); }
+      else { inp.checked = true; selected.add(id); inp.closest('.img-card')!.classList.add('selected'); }
+    });
+    if (!allSelected) setSelectMode(true);
+    updateBulkBar();
+  });
+
+  bulkDeleteBtn.addEventListener('click', async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    if (!confirm(`Delete ${ids.length} item${ids.length === 1 ? '' : 's'}? This cannot be undone.`)) return;
+    bulkDeleteBtn.disabled = true;
+    try {
+      const res = await fetch('/api/images/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', ids }),
+      });
+      const json = await res.json() as { ok?: boolean; deleted?: number; error?: string };
+      if (!json.ok) { alert(json.error ?? 'Bulk delete failed'); return; }
+      // Remove cards + update local state
+      let freed = 0;
+      for (const id of ids) {
+        const img = images.find((i) => i.id === id);
+        if (img) freed += img.size;
+      }
+      images = images.filter((i) => !selected.has(i.id));
+      selected.forEach((id) => {
+        const card = gallery.querySelector(`.img-card[data-id="${id}"]`);
+        card?.remove();
+      });
+      selected.clear();
+      storageUsed = Math.max(storageUsed - freed, 0);
+      updateStorageBar();
+      updateCount();
+      setSelectMode(false);
+      if (images.length === 0) { gallery.hidden = true; galleryEmpty.hidden = false; }
+      // Refresh folder counts
+      refreshFolders();
+    } catch {
+      alert('Network error during bulk delete');
+    } finally {
+      bulkDeleteBtn.disabled = false;
+    }
+  });
+
+  bulkMoveBtn.addEventListener('click', () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    openMoveModal(ids, null);
+  });
+
+  // ── Move modal ────────────────────────────────────────────────────────────
+  function openMoveModal(ids: number[], currentFolderId: number | null) {
+    moveModalTitle.textContent = ids.length > 1 ? `Move ${ids.length} items` : 'Move item';
+    moveFolderList.innerHTML = '';
+
+    const mk = (label: string, folderId: number | null, count?: number, disabled = false) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'folder-picker-item' + (disabled ? ' disabled' : '');
+      b.disabled = disabled;
+      b.innerHTML = `
+        <span class="fp-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+        <span></span>
+        ${count != null ? `<span class="fp-count">${count}</span>` : ''}
+      `;
+      (b.querySelectorAll('span')[1] as HTMLElement).textContent = label;
+      if (!disabled) b.addEventListener('click', () => doMove(ids, folderId));
+      return b;
+    };
+
+    moveFolderList.appendChild(mk('Root (no folder)', null, undefined, currentFolderId === null && ids.length === 1));
+    for (const f of folders) {
+      moveFolderList.appendChild(mk(f.name, f.id, f.count, currentFolderId === f.id && ids.length === 1));
+    }
+    if (folders.length === 0) {
+      const hint = document.createElement('p');
+      hint.className = 'app-modal-sub';
+      hint.style.marginTop = '8px';
+      hint.textContent = 'You have no folders yet. Create one first.';
+      moveFolderList.appendChild(hint);
+    }
+    showModal(moveModal);
+  }
+
+  async function doMove(ids: number[], folderId: number | null) {
+    try {
+      const res = await fetch('/api/images/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'move', ids, folder_id: folderId }),
+      });
+      const json = await res.json() as { ok?: boolean; moved?: number; error?: string };
+      if (!json.ok) { alert(json.error ?? 'Move failed'); return; }
+      // Update local state: if current view is filtered, remove moved items
+      if (typeof currentView === 'number' && currentView !== folderId) {
+        images = images.filter((i) => !ids.includes(i.id));
+        ids.forEach((id) => gallery.querySelector(`.img-card[data-id="${id}"]`)?.remove());
+      } else if (currentView === 'root' && folderId !== null) {
+        images = images.filter((i) => !ids.includes(i.id));
+        ids.forEach((id) => gallery.querySelector(`.img-card[data-id="${id}"]`)?.remove());
+      } else {
+        // Update folderId on remaining cards in state
+        images = images.map((i) => ids.includes(i.id) ? { ...i, folderId } : i);
+      }
+      selected.clear();
+      setSelectMode(false);
+      updateCount();
+      if (images.length === 0) { gallery.hidden = true; galleryEmpty.hidden = false; }
+      hideModal(moveModal);
+      refreshFolders();
+    } catch {
+      alert('Network error during move');
+    }
+  }
+
+  // ── New folder modal ─────────────────────────────────────────────────────
+  newFolderBtn.addEventListener('click', () => {
+    newFolderInput.value = '';
+    newFolderError.hidden = true;
+    showModal(newFolderModal);
+    setTimeout(() => newFolderInput.focus(), 50);
+  });
+  newFolderInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') newFolderConfirm.click();
+  });
+  newFolderConfirm.addEventListener('click', async () => {
+    const name = newFolderInput.value.trim();
+    if (!name) { newFolderError.textContent = 'Please enter a folder name'; newFolderError.hidden = false; return; }
+    newFolderConfirm.disabled = true;
+    try {
+      const res = await fetch('/api/folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const json = await res.json() as { ok?: boolean; folder?: FolderItem; error?: string };
+      if (!json.ok || !json.folder) {
+        newFolderError.textContent = json.error ?? 'Failed to create folder';
+        newFolderError.hidden = false;
+        return;
+      }
+      folders = [...folders, json.folder].sort((a, b) => a.name.localeCompare(b.name));
+      renderFolders();
+      hideModal(newFolderModal);
+    } catch {
+      newFolderError.textContent = 'Network error';
+      newFolderError.hidden = false;
+    } finally {
+      newFolderConfirm.disabled = false;
+    }
+  });
+
+  async function promptRenameFolder(f: FolderItem) {
+    const name = prompt('Rename folder', f.name);
+    if (name == null) return;
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === f.name) return;
+    try {
+      const res = await fetch(`/api/folders/${f.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string };
+      if (!json.ok) { alert(json.error ?? 'Rename failed'); return; }
+      folders = folders.map((x) => x.id === f.id ? { ...x, name: trimmed } : x)
+                       .sort((a, b) => a.name.localeCompare(b.name));
+      renderFolders();
+      renderBreadcrumbs();
+    } catch { alert('Network error'); }
+  }
+
+  let folderDelTarget: FolderItem | null = null;
+  function openFolderDeleteModal(f: FolderItem) {
+    folderDelTarget = f;
+    folderDelSub.textContent = f.count > 0
+      ? `"${f.name}" contains ${f.count} item${f.count === 1 ? '' : 's'}. What should happen to them?`
+      : `Delete the empty folder "${f.name}"?`;
+    folderDelMove.hidden = f.count === 0;
+    folderDelPurge.textContent = f.count === 0 ? 'Delete folder' : 'Delete files too';
+    showModal(folderDelModal);
+  }
+  async function deleteFolderRequest(mode: 'move' | 'purge') {
+    if (!folderDelTarget) return;
+    const f = folderDelTarget;
+    folderDelMove.disabled = true; folderDelPurge.disabled = true;
+    try {
+      const res = await fetch(`/api/folders/${f.id}?mode=${mode}`, { method: 'DELETE' });
+      const json = await res.json() as { ok?: boolean; purgedCount?: number; error?: string };
+      if (!json.ok) { alert(json.error ?? 'Delete failed'); return; }
+      folders = folders.filter((x) => x.id !== f.id);
+      // If we were inside that folder, go back to All files
+      if (currentView === f.id) { currentView = 'all'; }
+      hideModal(folderDelModal);
+      // Reload data for accurate storage/counts
+      await loadImages(false);
+    } catch { alert('Network error'); }
+    finally { folderDelMove.disabled = false; folderDelPurge.disabled = false; }
+  }
+  folderDelMove.addEventListener('click', () => deleteFolderRequest('move'));
+  folderDelPurge.addEventListener('click', () => deleteFolderRequest('purge'));
+
+  async function refreshFolders() {
+    try {
+      const res = await fetch('/api/folders');
+      const json = await res.json() as { ok?: boolean; folders?: FolderItem[] };
+      if (json.ok && json.folders) {
+        folders = json.folders;
+        renderFolders();
+        renderBreadcrumbs();
+      }
+    } catch {}
+  }
+
+  // ── Modal helpers ─────────────────────────────────────────────────────────
+  function showModal(m: HTMLElement) {
+    m.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+  function hideModal(m: HTMLElement) {
+    m.hidden = true;
+    document.body.style.overflow = '';
+  }
+  document.querySelectorAll('.app-modal').forEach((modal) => {
+    modal.querySelectorAll('[data-close]').forEach((el) => {
+      el.addEventListener('click', () => hideModal(modal as HTMLElement));
+    });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll<HTMLElement>('.app-modal').forEach((m) => { if (!m.hidden) hideModal(m); });
+  });
+
+  // Breadcrumb static buttons
+  breadcrumbsEl.querySelectorAll<HTMLButtonElement>('.crumb').forEach((b) => {
+    b.addEventListener('click', () => {
+      const v = b.getAttribute('data-folder');
+      navigateTo(v === 'all' ? 'all' : v === 'root' ? 'root' : 'all');
+    });
+  });
+
   // ── Init ──────────────────────────────────────────────────────────────────
   loadImages();
 </script>
+
+<style is:global>
+  .plan-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+    text-decoration: none;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .plan-badge:hover { transform: translateY(-1px); }
+  .plan-badge-free    { background: var(--surface-3); color: var(--text-muted); }
+  .plan-badge-pro     { background: linear-gradient(135deg, #5b5ef4, #7c3aed); color: #fff; box-shadow: 0 4px 14px rgba(124,58,237,.35); }
+  .plan-badge-master  { background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; box-shadow: 0 4px 14px rgba(239,68,68,.35); }
+  .btn-sm { padding: 7px 14px; font-size: 13px; }
+  .upgrade-btn { white-space: nowrap; }
+</style>
 
 </Layout>

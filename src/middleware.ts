@@ -2,8 +2,8 @@ import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
 import { verifySessionToken } from './lib/auth';
 
-const PUBLIC_PATHS = new Set(['/', '/login', '/signup']);
-const PUBLIC_PREFIXES = ['/api/auth/', '/images/'];
+const PUBLIC_PATHS = new Set(['/', '/login', '/signup', '/pricing']);
+const PUBLIC_PREFIXES = ['/api/auth/', '/images/', '/api/payments/webhook'];
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
   const { url, locals, cookies, redirect } = ctx;

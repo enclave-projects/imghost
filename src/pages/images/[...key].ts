@@ -27,6 +27,7 @@ export async function GET({ params }: APIContext): Promise<Response> {
     'Cache-Control',
     object.httpMetadata?.cacheControl ?? 'public, max-age=31536000, immutable',
   );
+  headers.set('Content-Disposition', 'inline');
   headers.set('ETag', object.httpEtag);
   headers.set('Last-Modified', object.uploaded.toUTCString());
 

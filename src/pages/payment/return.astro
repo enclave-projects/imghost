@@ -1,0 +1,100 @@
+---
+import Layout from '../../layouts/Layout.astro';
+export const prerender = false;
+const orderId = Astro.url.searchParams.get('order_id') ?? '';
+---
+<Layout title="Payment">
+
+<header class="header">
+  <div class="header-inner">
+    <a href="/" class="logo">
+      <div class="logo-mark">
+        <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=22" alt="" width="22" height="22" />
+      </div>
+      ImgHost
+    </a>
+  </div>
+</header>
+
+<main class="main return-main">
+  <div class="return-card" id="return-card">
+    <div class="return-spinner" id="spinner">
+      <div class="spinner"></div>
+    </div>
+    <h1 class="return-title" id="title">Verifying payment…</h1>
+    <p class="return-sub" id="subtitle">Please wait while we confirm your order with Cashfree.</p>
+    <div class="return-actions" id="actions" hidden>
+      <a href="/dashboard" class="btn btn-primary">Go to dashboard</a>
+      <a href="/pricing" class="btn btn-ghost">Back to pricing</a>
+    </div>
+  </div>
+</main>
+
+</Layout>
+
+<script define:vars={{ orderId }}>
+(async function () {
+  const title    = document.getElementById('title');
+  const subtitle = document.getElementById('subtitle');
+  const spinner  = document.getElementById('spinner');
+  const actions  = document.getElementById('actions');
+  const card     = document.getElementById('return-card');
+
+  function render(state, t, s) {
+    card.dataset.state = state;
+    title.textContent = t;
+    subtitle.textContent = s;
+    spinner.hidden = true;
+    actions.hidden = false;
+  }
+
+  if (!orderId) {
+    render('error', 'Missing order reference', 'We could not find your order. If you were charged, contact support.');
+    return;
+  }
+
+  try {
+    const res  = await fetch('/api/payments/verify?order_id=' + encodeURIComponent(orderId));
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      render('error', 'Verification failed', data.error || 'We could not verify your payment. Please try again or contact support.');
+      return;
+    }
+    if (data.status === 'PAID') {
+      render('ok', 'Payment successful ✓', `Your ${data.plan.charAt(0).toUpperCase() + data.plan.slice(1)} plan is now active. Enjoy the extra storage!`);
+    } else if (data.status === 'ACTIVE') {
+      render('pending', 'Payment pending', 'Your payment has not been completed yet. If you were charged, please check back shortly.');
+    } else if (data.status === 'EXPIRED') {
+      render('error', 'Order expired', 'This order expired before payment was completed. Please start again.');
+    } else {
+      render('error', 'Payment not completed', 'Your payment did not go through. You can try again from the pricing page.');
+    }
+  } catch (err) {
+    render('error', 'Something went wrong', err.message || 'Please try again.');
+  }
+})();
+</script>
+
+<style>
+  .return-main { min-height: calc(100vh - 68px); display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+  .return-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+    padding: 44px 32px; max-width: 480px; width: 100%; text-align: center;
+    box-shadow: 0 10px 30px rgba(17,24,39,.06);
+  }
+  .return-card[data-state="ok"]      { border-color: var(--success); }
+  .return-card[data-state="error"]   { border-color: var(--error); }
+  .return-card[data-state="pending"] { border-color: var(--warning); }
+
+  .return-spinner { display: flex; justify-content: center; margin-bottom: 20px; }
+  .spinner {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 3px solid var(--surface-3); border-top-color: var(--primary);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .return-title { font-size: 24px; font-weight: 800; color: var(--text); margin-bottom: 10px; letter-spacing: -0.01em; }
+  .return-sub   { font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+  .return-actions { margin-top: 28px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+</style>

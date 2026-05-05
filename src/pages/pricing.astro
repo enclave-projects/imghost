@@ -1,0 +1,303 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { PLANS } from '../lib/plans';
+import { getUserById } from '../lib/db';
+import { env } from 'cloudflare:workers';
+
+export const prerender = false;
+
+const user = Astro.locals.user ?? null;
+let currentPlan = 'free';
+if (user && env?.DB) {
+  const dbUser = await getUserById(env.DB, user.id);
+  currentPlan = dbUser?.plan ?? 'free';
+}
+
+const plans = [PLANS.free, PLANS.pro, PLANS.master];
+---
+<Layout title="Pricing">
+
+<header class="header">
+  <div class="header-inner">
+    <a href="/" class="logo">
+      <div class="logo-mark">
+        <img src="https://img.icons8.com/?id=yRoFUHiH0uft&format=png&size=22" alt="" width="22" height="22" />
+      </div>
+      ImgHost
+    </a>
+    <nav class="header-nav">
+      {user ? (
+        <>
+          <a href="/dashboard" class="btn btn-ghost">Dashboard</a>
+          <div class="user-chip">
+            <div class="avatar">{user.email.charAt(0).toUpperCase()}</div>
+            <span class="user-email">{user.email}</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <a href="/login" class="btn btn-ghost">Log in</a>
+          <a href="/signup" class="btn btn-primary">Sign up</a>
+        </>
+      )}
+    </nav>
+  </div>
+</header>
+
+<main class="main pricing-main">
+  <div class="pricing-head">
+    <h1 class="pricing-title">Simple, transparent pricing</h1>
+    <p class="pricing-sub">Upgrade any time. Pay only for what you need. Cancel by not renewing.</p>
+  </div>
+
+  <div class="pricing-grid">
+    {plans.map((plan) => (
+      <div class={`pricing-card ${plan.id === 'master' ? 'pricing-card-featured' : ''} ${currentPlan === plan.id ? 'pricing-card-current' : ''}`} data-plan={plan.id}>
+        {plan.id === 'master' && <div class="pricing-badge">Most value</div>}
+        {currentPlan === plan.id && <div class="pricing-badge pricing-badge-current">Your plan</div>}
+        <div class="pricing-name">{plan.name}</div>
+        <div class="pricing-price">
+          {plan.priceInr === 0
+            ? <><span class="price-amount">Free</span></>
+            : <><span class="price-currency">₹</span><span class="price-amount">{plan.priceInr}</span><span class="price-period">one-time</span></>
+          }
+        </div>
+        <ul class="pricing-features">
+          {plan.features.map((f) => (
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>{f}</span>
+            </li>
+          ))}
+        </ul>
+        {plan.priceInr === 0 ? (
+          <button class="btn btn-ghost pricing-btn" disabled>{currentPlan === plan.id ? 'Current plan' : 'Default plan'}</button>
+        ) : currentPlan === plan.id ? (
+          <button class="btn btn-ghost pricing-btn" disabled>Active</button>
+        ) : (
+          <button class="btn btn-primary pricing-btn buy-btn" data-plan={plan.id} data-amount={plan.priceInr} data-name={plan.name}>
+            Upgrade to {plan.name}
+          </button>
+        )}
+      </div>
+    ))}
+  </div>
+
+  <p class="pricing-footnote">
+    Payments are securely processed by <a href="https://www.cashfree.com" target="_blank" rel="noopener">Cashfree Payments</a>.
+    You must be signed in to purchase a plan.
+  </p>
+</main>
+
+<!-- ═══ Phone collection modal (Cashfree requires a valid phone number) ═══ -->
+<div class="modal" id="phone-modal" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="phone-modal-title">
+    <div class="modal-head">
+      <h3 id="phone-modal-title" class="modal-title">Confirm your purchase</h3>
+      <button class="modal-close" data-close-modal aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">You're upgrading to <strong id="phone-modal-plan">—</strong> for <strong id="phone-modal-amount">—</strong>.</p>
+      <label class="field">
+        <span class="field-label">Phone number (10 digits)</span>
+        <input type="tel" id="phone-input" class="field-input" placeholder="9999999999" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" />
+      </label>
+      <div id="phone-error" class="alert" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-close-modal>Cancel</button>
+      <button class="btn btn-primary" id="pay-btn">
+        <span id="pay-btn-label">Pay with Cashfree</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+</Layout>
+
+<!-- Cashfree JS SDK v3 -->
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js" is:inline></script>
+
+<script define:vars={{ isLoggedIn: !!user }}>
+(function () {
+  const modal     = document.getElementById('phone-modal');
+  const phoneEl   = document.getElementById('phone-input');
+  const planEl    = document.getElementById('phone-modal-plan');
+  const amountEl  = document.getElementById('phone-modal-amount');
+  const payBtn    = document.getElementById('pay-btn');
+  const payLabel  = document.getElementById('pay-btn-label');
+  const errEl     = document.getElementById('phone-error');
+
+  let currentPlan = null;
+
+  function openModal(plan, amount, name) {
+    if (!isLoggedIn) {
+      window.location.href = '/login?next=/pricing';
+      return;
+    }
+    currentPlan = plan;
+    planEl.textContent = name + ' plan';
+    amountEl.textContent = '₹' + amount;
+    errEl.hidden = true;
+    errEl.textContent = '';
+    phoneEl.value = '';
+    payLabel.textContent = 'Pay with Cashfree';
+    payBtn.disabled = false;
+    modal.hidden = false;
+    setTimeout(() => phoneEl.focus(), 50);
+  }
+
+  function closeModal() { modal.hidden = true; }
+
+  function showError(msg) {
+    errEl.textContent = msg;
+    errEl.hidden = false;
+  }
+
+  document.querySelectorAll('.buy-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      openModal(btn.dataset.plan, btn.dataset.amount, btn.dataset.name);
+    });
+  });
+
+  document.querySelectorAll('[data-close-modal]').forEach((el) => {
+    el.addEventListener('click', closeModal);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hidden) closeModal();
+  });
+
+  payBtn.addEventListener('click', async () => {
+    const phone = (phoneEl.value || '').replace(/\D/g, '');
+    if (!/^[0-9]{10}$/.test(phone)) {
+      showError('Please enter a valid 10-digit phone number.');
+      return;
+    }
+    errEl.hidden = true;
+    payBtn.disabled = true;
+    payLabel.textContent = 'Creating order…';
+
+    let data;
+    try {
+      const res = await fetch('/api/payments/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: currentPlan, phone }),
+      });
+      data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Order creation failed');
+    } catch (err) {
+      payBtn.disabled = false;
+      payLabel.textContent = 'Pay with Cashfree';
+      showError(err.message || 'Something went wrong. Please try again.');
+      return;
+    }
+
+    if (typeof window.Cashfree !== 'function') {
+      showError('Cashfree SDK failed to load. Please refresh and try again.');
+      payBtn.disabled = false;
+      payLabel.textContent = 'Pay with Cashfree';
+      return;
+    }
+
+    const cashfree = window.Cashfree({ mode: data.environment === 'production' ? 'production' : 'sandbox' });
+    payLabel.textContent = 'Redirecting…';
+    cashfree.checkout({
+      paymentSessionId: data.paymentSessionId,
+      redirectTarget: '_self',
+    });
+  });
+})();
+</script>
+
+<style>
+  .pricing-main { padding: 56px 20px 80px; max-width: 1100px; margin: 0 auto; }
+  .pricing-head { text-align: center; margin-bottom: 48px; }
+  .pricing-title { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+  .pricing-sub   { font-size: 17px; color: var(--text-muted); margin-top: 10px; }
+
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+  @media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr; } }
+
+  .pricing-card {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .pricing-card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(17,24,39,.08); }
+  .pricing-card-featured {
+    border-color: var(--primary);
+    box-shadow: 0 10px 40px var(--primary-glow);
+  }
+  .pricing-card-current { border-color: var(--success); }
+
+  .pricing-badge {
+    position: absolute; top: -12px; left: 28px;
+    background: var(--primary); color: #fff;
+    padding: 5px 12px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .pricing-badge-current { background: var(--success); left: auto; right: 28px; }
+
+  .pricing-name  { font-size: 15px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .pricing-price { margin: 14px 0 22px; display: flex; align-items: baseline; gap: 6px; }
+  .price-currency { font-size: 22px; font-weight: 700; color: var(--text); }
+  .price-amount   { font-size: 44px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+  .price-period   { font-size: 14px; color: var(--text-muted); margin-left: 4px; }
+
+  .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 12px; flex: 1; margin-bottom: 24px; }
+  .pricing-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; color: var(--text-2); }
+  .pricing-features svg { flex: none; color: var(--primary); margin-top: 3px; }
+  .pricing-card-featured .pricing-features svg { color: var(--primary); }
+
+  .pricing-btn { width: 100%; justify-content: center; padding: 12px 18px; font-weight: 600; }
+
+  .pricing-footnote {
+    text-align: center; margin-top: 40px; font-size: 13px; color: var(--text-muted);
+  }
+  .pricing-footnote a { color: var(--primary); text-decoration: none; font-weight: 600; }
+  .pricing-footnote a:hover { text-decoration: underline; }
+
+  /* Modal */
+  .modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal-backdrop { position: absolute; inset: 0; background: rgba(17,24,39,.5); backdrop-filter: blur(4px); }
+  .modal-card {
+    position: relative; background: var(--surface); border-radius: 16px;
+    padding: 0; width: min(460px, 92vw);
+    box-shadow: 0 20px 60px rgba(17,24,39,.25);
+    animation: modal-in .18s ease-out;
+  }
+  @keyframes modal-in { from { transform: translateY(6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 8px; }
+  .modal-title { font-size: 18px; font-weight: 700; color: var(--text); }
+  .modal-close { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; border-radius: 8px; display: flex; }
+  .modal-close:hover { background: var(--surface-3); color: var(--text); }
+  .modal-body { padding: 8px 24px 20px; }
+  .modal-desc { font-size: 14px; color: var(--text-2); margin-bottom: 16px; }
+  .modal-foot { display: flex; gap: 10px; justify-content: flex-end; padding: 16px 24px 22px; border-top: 1px solid var(--border); }
+
+  .field { display: block; }
+  .field-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+  .field-input {
+    width: 100%; padding: 11px 14px; font-size: 15px;
+    border: 1px solid var(--border-strong); border-radius: 10px;
+    background: var(--surface-2); color: var(--text);
+    font-family: inherit;
+  }
+  .field-input:focus { outline: 2px solid var(--primary-glow); border-color: var(--primary); }
+
+  .alert { background: var(--error-light); color: var(--error); padding: 10px 14px; border-radius: 10px; font-size: 14px; margin-top: 12px; }
+</style>
