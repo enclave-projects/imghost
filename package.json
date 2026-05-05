@@ -6,12 +6,12 @@
 		"node": ">=22.12.0"
 	},
 	"scripts": {
-		"dev": "astro build && wrangler dev --remote",
+		"dev": "astro dev",
 		"build": "astro build",
-		"preview": "astro build && astro preview",
+		"preview": "astro build && wrangler pages dev ./dist",
 		"astro": "astro",
 		"generate-types": "wrangler types",
-		"deploy": "astro build && wrangler deploy",
+		"deploy": "astro build && node -e \"require('fs').rmSync('dist/server/wrangler.json',{force:true})\" && wrangler pages deploy ./dist",
 		"cf-typegen": "wrangler types"
 	},
 	"dependencies": {
