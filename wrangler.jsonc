@@ -1,11 +1,7 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "imghost",
-	"main": "@astrojs/cloudflare/entrypoints/server",
-	"assets": {
-		"directory": "./dist",
-		"binding": "ASSETS"
-	},
+	"pages_build_output_dir": "./dist",
 	"compatibility_date": "2026-05-05",
 	"compatibility_flags": [
 		"nodejs_compat"
