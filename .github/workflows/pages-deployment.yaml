@@ -29,7 +29,9 @@ jobs:
         run: npm run build
 
       - name: Remove generated wrangler config (conflicts with Pages)
-        run: rm -f dist/server/wrangler.json
+        run: |
+          rm -f dist/server/wrangler.json
+          rm -rf .wrangler
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
