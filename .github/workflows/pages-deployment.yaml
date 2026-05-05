@@ -1,4 +1,4 @@
-name: Deploy to Cloudflare Pages
+name: Deploy to Cloudflare Workers
 
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: read
       deployments: write
-    name: Deploy to Cloudflare Pages
+    name: Deploy to Cloudflare Workers
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,15 +28,10 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Remove generated wrangler config (conflicts with Pages)
-        run: |
-          rm -f dist/server/wrangler.json
-          rm -rf .wrangler
-
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=imghost --branch=main --commit-dirty=true
+          command: deploy
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
